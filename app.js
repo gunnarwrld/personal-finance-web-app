@@ -1,26 +1,57 @@
-// Progressive Web App - Enhanced Personal Finance Tracker
-// With account-specific transactions, balance management, and LIVE FX rates via exchangerate.host
+// Supabase-Integrated Personal Finance Tracker
+// Full CRUD operations with real-time sync and Google authentication
+// Demo mode available for testing when OAuth is not configured
 
 class FinanceApp {
     constructor() {
-        // Static fallbacks (used only if no live rates available)
-        this.currencies = [
-            {code: "USD", symbol: "$", name: "US Dollar", rate: 1.0},
-            {code: "EUR", symbol: "€", name: "Euro", rate: 0.85},
-            {code: "GBP", symbol: "£", name: "British Pound", rate: 0.73},
-            {code: "JPY", symbol: "¥", name: "Japanese Yen", rate: 110.0},
-            {code: "CNY", symbol: "¥", name: "Chinese Yuan", rate: 6.5},
-            {code: "SEK", symbol: "kr", name: "Swedish Krona", rate: 10.87},
-            {code: "AUD", symbol: "A$", name: "Australian Dollar", rate: 1.35},
-            {code: "CAD", symbol: "C$", name: "Canadian Dollar", rate: 1.25}
-        ];
+        // Initialize Supabase client
+        this.supabaseUrl = 'https://pmeajlxzukzhcmjmclbf.supabase.co';
+        this.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZWFqbHh6dWt6aGNtam1jbGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1OTQ0MDEsImV4cCI6MjA3NTE3MDQwMX0.FUn2vZ2AbM5jqrP1NFyl4sbtbvljkrPhgdT91sNhtdc';
+        
+        this.supabase = window.supabase.createClient(this.supabaseUrl, this.supabaseKey);
 
-        // LIVE FX state
-        this.fxRates = null; // object of { code: rateAgainstBase }
-        this.fxBase = 'USD';
-        this.lastFxUpdate = null; // timestamp
+        // Demo mode for when OAuth is not configured
+        this.demoMode = false;
+        this.authTimeout = null;
+        this.demoUser = {
+            id: 'demo-user-123',
+            email: 'demo@financetracker.com',
+            user_metadata: {
+                avatar_url: null
+            }
+        };
 
         // App state
+        this.user = null;
+        this.currentScreen = 'auth';
+        this.displayCurrency = 'USD';
+        this.balanceVisible = true;
+        this.accounts = [];
+        this.transactions = [];
+        this.currencyRates = {};
+        this.lastFxUpdate = null;
+        
+        // Offline queue for when connection is lost
+        this.offlineQueue = [];
+        this.isOnline = navigator.onLine;
+        this.realtimeEnabled = true;
+        
+        // Edit states
+        this.editingAccount = null;
+        this.editingTransaction = null;
+        
+        // Currency data
+        this.currencies = [
+            {code: "USD", symbol: "$", name: "US Dollar"},
+            {code: "EUR", symbol: "€", name: "Euro"},
+            {code: "GBP", symbol: "£", name: "British Pound"},
+            {code: "JPY", symbol: "¥", name: "Japanese Yen"},
+            {code: "CNY", symbol: "¥", name: "Chinese Yuan"},
+            {code: "SEK", symbol: "kr", name: "Swedish Krona"},
+            {code: "AUD", symbol: "A$", name: "Australian Dollar"},
+            {code: "CAD", symbol: "C$", name: "Canadian Dollar"}
+        ];
+
         this.categories = [
             "Food & Dining", "Transportation", "Shopping", "Bills & Utilities",
             "Entertainment", "Health & Fitness", "Education", "Salary", 
@@ -29,26 +60,44 @@ class FinanceApp {
 
         this.accountTypes = ["Cash", "Card", "Bank", "Wallet"];
 
-        this.currentScreen = 'dashboard';
-        this.displayCurrency = 'USD';
-        this.balanceVisible = true;
-        this.accounts = [];
-        this.transactions = [];
-
-        // Dayjs relative time setup
-        this.setupDayjs();
-
         this.init();
+    }
+
+    async init() {
+        console.log('Initializing Supabase Finance App...');
+        
+        // Setup dayjs
+        this.setupDayjs();
+        
+        // Setup offline/online detection
+        this.setupOfflineHandling();
+        
+        // Setup event listeners first
+        this.setupEventListeners();
+        
+        // Check authentication state
+        await this.checkAuthState();
+        
+        // Setup realtime subscriptions if authenticated
+        if (this.user && !this.demoMode) {
+            await this.setupRealtimeSubscriptions();
+            await this.loadUserData();
+        } else if (this.user && this.demoMode) {
+            await this.loadDemoData();
+        }
+        
+        // Always try to sync currency rates
+        await this.syncCurrencyRates();
+        
+        console.log('App initialization complete');
     }
 
     setupDayjs() {
         try {
             if (typeof dayjs !== 'undefined' && dayjs.extend) {
-                // Try to extend with relative time plugin
                 if (window.dayjs_plugin_relativeTime) {
                     dayjs.extend(window.dayjs_plugin_relativeTime);
                 } else {
-                    // Load the plugin manually if not available
                     const script = document.createElement('script');
                     script.src = 'https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js';
                     script.onload = () => {
@@ -60,60 +109,378 @@ class FinanceApp {
                 }
             }
         } catch (e) {
-            console.warn('dayjs setup failed, will use fallback time formatting:', e);
+            console.warn('dayjs setup failed:', e);
         }
     }
 
-    init() {
-        console.log('Initializing FinanceApp...');
-        this.loadData();
-        this.setupEventListeners();
-        this.populateCurrencySelectors();
-        this.renderUI();
-        this.showScreen('dashboard');
-        this.registerServiceWorker();
-        
-        // Ensure navigation is working
-        setTimeout(() => {
-            this.ensureNavigationVisible();
-            this.setupNavigationEvents();
-        }, 100);
+    setupOfflineHandling() {
+        window.addEventListener('online', () => {
+            this.isOnline = true;
+            this.updateConnectionStatus();
+            if (!this.demoMode) {
+                this.processOfflineQueue();
+            }
+        });
 
-        // Load saved FX from storage if available
-        this.loadSavedFxRates();
+        window.addEventListener('offline', () => {
+            this.isOnline = false;
+            this.updateConnectionStatus();
+        });
 
-        // Initial fetch of live FX rates with delay to ensure UI is ready
-        setTimeout(() => {
-            this.fetchFxRates('USD');
-        }, 500);
-
-        // Background updates every 6 hours
-        this.fxInterval = setInterval(() => {
-            this.fetchFxRates(this.fxBase || 'USD');
-        }, 3600000 * 6);
-
-        // Render last update info on load
-        setTimeout(() => {
-            this.renderFxUpdateInfo();
-        }, 200);
-
-        console.log('FinanceApp initialization complete');
+        this.updateConnectionStatus();
     }
 
-    loadSavedFxRates() {
+    updateConnectionStatus() {
+        const indicators = document.querySelectorAll('.sync-indicator');
+        const offlineStatus = document.getElementById('offlineStatus');
+        
+        indicators.forEach(indicator => {
+            const dot = indicator.querySelector('.sync-dot');
+            if (dot) {
+                dot.classList.toggle('offline', !this.isOnline);
+            }
+        });
+
+        if (offlineStatus) {
+            offlineStatus.textContent = this.demoMode ? 'Demo Mode' : (this.isOnline ? 'Connected' : 'Offline');
+        }
+    }
+
+    async processOfflineQueue() {
+        if (!this.isOnline || this.offlineQueue.length === 0 || this.demoMode) return;
+
+        console.log('Processing offline queue:', this.offlineQueue.length, 'items');
+        
+        for (const operation of this.offlineQueue) {
+            try {
+                await this.executeOperation(operation);
+            } catch (error) {
+                console.error('Failed to process queued operation:', error);
+            }
+        }
+        
+        this.offlineQueue = [];
+        await this.loadUserData();
+    }
+
+    async executeOperation(operation) {
+        if (this.demoMode) return;
+        
+        const { type, data } = operation;
+        
+        switch (type) {
+            case 'create_account':
+                await this.createAccountInDB(data);
+                break;
+            case 'update_account':
+                await this.updateAccountInDB(data.id, data);
+                break;
+            case 'delete_account':
+                await this.deleteAccountFromDB(data.id);
+                break;
+            case 'create_transaction':
+                await this.createTransactionInDB(data);
+                break;
+            case 'update_transaction':
+                await this.updateTransactionInDB(data.id, data);
+                break;
+            case 'delete_transaction':
+                await this.deleteTransactionFromDB(data.id);
+                break;
+        }
+    }
+
+    // Demo data for testing when OAuth is not available
+    async loadDemoData() {
+        this.accounts = [
+            {
+                id: 1,
+                name: "Main Checking",
+                type: "Bank",
+                balance: 2580.45,
+                currency: "USD",
+                bank_name: "Chase Bank",
+                account_number: "****1234",
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 2,
+                name: "Savings Account",
+                type: "Bank",
+                balance: 15420.80,
+                currency: "USD",
+                bank_name: "Chase Bank",
+                account_number: "****5678",
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 3,
+                name: "Credit Card",
+                type: "Card",
+                balance: -1240.30,
+                currency: "USD",
+                bank_name: "Capital One",
+                account_number: "****9876",
+                created_at: new Date().toISOString()
+            }
+        ];
+
+        const today = new Date();
+        const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        
+        this.transactions = [
+            {
+                id: 1,
+                account_id: 1,
+                amount: 85.50,
+                description: "Grocery Store",
+                category: "Food & Dining",
+                type: "expense",
+                currency: "USD",
+                date: today.toISOString().split('T')[0],
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 2,
+                account_id: 1,
+                amount: 3200.00,
+                description: "Monthly Salary",
+                category: "Salary",
+                type: "income",
+                currency: "USD",
+                date: thisMonth.toISOString().split('T')[0],
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 3,
+                account_id: 3,
+                amount: 45.20,
+                description: "Gas Station",
+                category: "Transportation",
+                type: "expense",
+                currency: "USD",
+                date: new Date(today.getTime() - 86400000).toISOString().split('T')[0],
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 4,
+                account_id: 1,
+                amount: 120.00,
+                description: "Electricity Bill",
+                category: "Bills & Utilities",
+                type: "expense",
+                currency: "USD",
+                date: new Date(today.getTime() - 172800000).toISOString().split('T')[0],
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 5,
+                account_id: 1,
+                amount: 500.00,
+                description: "Freelance Project",
+                category: "Freelance",
+                type: "income",
+                currency: "USD",
+                date: new Date(today.getTime() - 259200000).toISOString().split('T')[0],
+                created_at: new Date().toISOString()
+            }
+        ];
+
+        console.log('Demo data loaded - Accounts:', this.accounts.length, 'Transactions:', this.transactions.length);
+    }
+
+    // Authentication
+    async checkAuthState() {
         try {
-            const savedRates = localStorage.getItem('financeApp_fxRates');
-            const savedTs = localStorage.getItem('financeApp_fxTimestamp');
-            if (savedRates) {
-                this.fxRates = JSON.parse(savedRates);
-                console.log('Loaded saved FX rates:', Object.keys(this.fxRates || {}).length, 'currencies');
+            const { data: { session } } = await this.supabase.auth.getSession();
+            
+            if (session?.user) {
+                this.user = session.user;
+                this.showMainApp();
+            } else {
+                this.showAuthScreen();
+                
+                // Set up automatic demo mode fallback after 3 seconds
+                this.authTimeout = setTimeout(() => {
+                    console.log('Auto-starting demo mode after timeout');
+                    this.startDemoMode();
+                }, 3000);
             }
-            if (savedTs) {
-                this.lastFxUpdate = parseInt(savedTs, 10);
-                console.log('Last FX update:', new Date(this.lastFxUpdate));
+
+            // Listen for auth changes
+            this.supabase.auth.onAuthStateChange((event, session) => {
+                console.log('Auth state changed:', event);
+                
+                // Clear timeout if auth state changes
+                if (this.authTimeout) {
+                    clearTimeout(this.authTimeout);
+                    this.authTimeout = null;
+                }
+                
+                if (event === 'SIGNED_IN' && session?.user) {
+                    this.user = session.user;
+                    this.demoMode = false;
+                    this.showMainApp();
+                    this.setupRealtimeSubscriptions();
+                    this.loadUserData();
+                    this.syncCurrencyRates();
+                } else if (event === 'SIGNED_OUT') {
+                    this.user = null;
+                    this.demoMode = false;
+                    this.showAuthScreen();
+                    this.cleanup();
+                }
+            });
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            this.showAuthScreen();
+            
+            // Immediate fallback to demo mode on auth error
+            setTimeout(() => {
+                console.log('Auth check failed, starting demo mode');
+                this.startDemoMode();
+            }, 1000);
+        }
+    }
+
+    async signInWithGoogle() {
+        console.log('Starting Google sign in process...');
+        
+        // Clear any existing timeout
+        if (this.authTimeout) {
+            clearTimeout(this.authTimeout);
+            this.authTimeout = null;
+        }
+        
+        try {
+            this.setSyncStatus('auth', true);
+            
+            // Set up immediate fallback timer
+            const fallbackTimeout = setTimeout(() => {
+                console.log('OAuth timeout, starting demo mode');
+                this.startDemoMode();
+            }, 2000);
+            
+            const { error } = await this.supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+
+            // Clear fallback if we get here
+            clearTimeout(fallbackTimeout);
+
+            if (error) {
+                console.error('Google OAuth error:', error);
+                throw error;
             }
-        } catch (e) {
-            console.warn('Failed to load saved FX rates:', e);
+            
+        } catch (error) {
+            console.error('Google sign in failed:', error);
+            // Immediate demo mode on any error
+            this.startDemoMode();
+        } finally {
+            this.setSyncStatus('auth', false);
+        }
+    }
+
+    startDemoMode() {
+        console.log('Starting demo mode');
+        
+        // Clear any error states and timeouts
+        if (this.authTimeout) {
+            clearTimeout(this.authTimeout);
+            this.authTimeout = null;
+        }
+        this.setSyncStatus('auth', false);
+        
+        // Prevent multiple demo mode starts
+        if (this.demoMode) {
+            console.log('Demo mode already active');
+            return;
+        }
+        
+        // Set demo mode
+        this.demoMode = true;
+        this.user = this.demoUser;
+        
+        // Show warning toast
+        this.showToast('Demo mode active - OAuth not configured. All changes are temporary.', 'warning');
+        
+        // Load demo data and show main app
+        this.loadDemoData().then(() => {
+            this.showMainApp();
+            this.syncCurrencyRates();
+        }).catch(error => {
+            console.error('Failed to load demo data:', error);
+            this.showMainApp(); // Show anyway
+        });
+    }
+
+    async signOut() {
+        try {
+            if (this.demoMode) {
+                this.demoMode = false;
+                this.user = null;
+                this.showAuthScreen();
+                this.cleanup();
+                this.showToast('Demo session ended', 'success');
+                return;
+            }
+            
+            const { error } = await this.supabase.auth.signOut();
+            if (error) throw error;
+            
+            this.showToast('Signed out successfully', 'success');
+        } catch (error) {
+            console.error('Sign out failed:', error);
+            this.showToast('Failed to sign out', 'error');
+        }
+    }
+
+    showAuthScreen() {
+        this.currentScreen = 'auth';
+        this.showScreen('auth');
+        this.setSyncStatus('auth', false);
+        
+        // Add demo mode button after 1 second
+        setTimeout(() => {
+            this.addDemoModeButton();
+        }, 1000);
+    }
+
+    addDemoModeButton() {
+        const authContent = document.querySelector('.auth-content');
+        if (authContent && !document.getElementById('demoModeBtn')) {
+            const demoBtn = document.createElement('button');
+            demoBtn.id = 'demoModeBtn';
+            demoBtn.className = 'btn btn--outline';
+            demoBtn.style.marginTop = '16px';
+            demoBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+                Try Demo Mode
+            `;
+            demoBtn.addEventListener('click', () => this.startDemoMode());
+            authContent.appendChild(demoBtn);
+        }
+    }
+
+    showMainApp() {
+        if (this.user) {
+            this.updateUserProfile();
+            this.showScreen('dashboard');
+            this.currentScreen = 'dashboard';
+            
+            // Make sure navigation is visible and working
+            setTimeout(() => {
+                this.ensureNavigationVisible();
+                this.renderUI();
+            }, 100);
         }
     }
 
@@ -121,159 +488,594 @@ class FinanceApp {
         const bottomNav = document.querySelector('.bottom-nav');
         if (bottomNav) {
             bottomNav.style.display = 'flex';
-            bottomNav.style.position = 'fixed';
-            bottomNav.style.bottom = '0';
-            bottomNav.style.left = '0';
-            bottomNav.style.right = '0';
-            bottomNav.style.zIndex = '1000';
             bottomNav.style.visibility = 'visible';
             bottomNav.style.opacity = '1';
-            console.log('Navigation bar made visible');
-        } else {
-            console.error('Navigation bar not found in DOM');
         }
     }
 
-    setupNavigationEvents() {
-        console.log('Setting up navigation events...');
-        document.querySelectorAll('.nav-btn').forEach((btn, index) => {
-            console.log(`Setting up navigation button ${index}:`, btn.dataset.screen);
-            
-            // Remove existing listeners and add new ones
-            btn.replaceWith(btn.cloneNode(true));
-            const newBtn = document.querySelectorAll('.nav-btn')[index];
-            
-            newBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const screen = newBtn.dataset.screen;
-                console.log('Navigation clicked:', screen);
-                this.showScreen(screen);
-            });
-        });
-        console.log('Navigation events setup complete');
+    updateUserProfile() {
+        if (!this.user) return;
+
+        const userEmail = document.getElementById('userEmail');
+        const userAvatar = document.getElementById('userAvatar');
+        const defaultAvatar = document.getElementById('defaultAvatar');
+
+        if (userEmail) {
+            userEmail.textContent = this.demoMode ? 'Demo User' : (this.user.email || 'Unknown User');
+        }
+
+        if (this.user.user_metadata?.avatar_url && userAvatar && defaultAvatar && !this.demoMode) {
+            userAvatar.src = this.user.user_metadata.avatar_url;
+            userAvatar.style.display = 'block';
+            defaultAvatar.style.display = 'none';
+        }
     }
 
-    // Data Management
-    loadData() {
+    cleanup() {
+        // Clean up subscriptions and reset state
+        this.accounts = [];
+        this.transactions = [];
+        if (this.realtimeSubscription) {
+            this.realtimeSubscription.unsubscribe();
+        }
+        if (this.authTimeout) {
+            clearTimeout(this.authTimeout);
+            this.authTimeout = null;
+        }
+    }
+
+    // Real-time subscriptions
+    async setupRealtimeSubscriptions() {
+        if (!this.user || !this.realtimeEnabled || this.demoMode) return;
+
         try {
-            const savedAccounts = localStorage.getItem('financeApp_accounts');
-            const savedTransactions = localStorage.getItem('financeApp_transactions');
-            const savedCurrency = localStorage.getItem('financeApp_displayCurrency');
-            const savedBalanceVisible = localStorage.getItem('financeApp_balanceVisible');
+            // Subscribe to accounts changes
+            this.supabase
+                .channel('accounts-changes')
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'accounts', filter: `user_id=eq.${this.user.id}` },
+                    (payload) => this.handleAccountChange(payload)
+                )
+                .subscribe();
 
-            if (savedAccounts) {
-                this.accounts = JSON.parse(savedAccounts);
-            } else {
-                // Seed with sample account (SEK)
-                this.accounts = [{
-                    id: 1,
-                    name: "Spärbanken",
-                    type: "Bank",
-                    balance: 6202.00,
-                    currency: "SEK",
-                    bankName: "Spärbanken",
-                    accountNumber: "****45-2",
-                    createdAt: new Date().toISOString()
-                }];
-                this.saveData();
-            }
+            // Subscribe to transactions changes
+            this.supabase
+                .channel('transactions-changes')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${this.user.id}` },
+                    (payload) => this.handleTransactionChange(payload)
+                )
+                .subscribe();
 
-            if (savedTransactions) {
-                this.transactions = JSON.parse(savedTransactions);
-            }
-
-            if (savedCurrency) {
-                this.displayCurrency = savedCurrency;
-            }
-
-            if (savedBalanceVisible !== null) {
-                this.balanceVisible = JSON.parse(savedBalanceVisible);
-            }
-
-            console.log('Data loaded - Accounts:', this.accounts.length, 'Transactions:', this.transactions.length);
-        } catch (e) {
-            console.warn('Failed to load data from storage:', e);
+            console.log('Real-time subscriptions setup complete');
+        } catch (error) {
+            console.error('Failed to setup realtime subscriptions:', error);
         }
     }
 
-    saveData() {
-        try {
-            localStorage.setItem('financeApp_accounts', JSON.stringify(this.accounts));
-            localStorage.setItem('financeApp_transactions', JSON.stringify(this.transactions));
-            localStorage.setItem('financeApp_displayCurrency', this.displayCurrency);
-            localStorage.setItem('financeApp_balanceVisible', JSON.stringify(this.balanceVisible));
-        } catch (e) {
-            console.warn('Failed to save data to storage:', e);
-        }
-    }
-
-    // LIVE FX: Fetch and manage rates
-    async fetchFxRates(base = 'USD') {
-        console.log('Fetching FX rates with base:', base);
-        const refreshBtn = document.getElementById('refreshFxBtn');
+    handleAccountChange(payload) {
+        console.log('Account change:', payload);
+        this.setSyncStatus('accounts', true);
         
+        setTimeout(async () => {
+            await this.loadAccounts();
+            this.renderUI();
+            this.setSyncStatus('accounts', false);
+        }, 500);
+    }
+
+    handleTransactionChange(payload) {
+        console.log('Transaction change:', payload);
+        this.setSyncStatus('balance', true);
+        
+        setTimeout(async () => {
+            await this.loadTransactions();
+            await this.loadAccounts(); // Refresh balances
+            this.renderUI();
+            this.setSyncStatus('balance', false);
+        }, 500);
+    }
+
+    setSyncStatus(type, syncing) {
+        const indicators = {
+            'auth': document.getElementById('syncStatus'),
+            'accounts': document.getElementById('accountsSync'),
+            'balance': document.getElementById('balanceSync')
+        };
+
+        const indicator = indicators[type];
+        if (indicator) {
+            const dot = indicator.querySelector('.sync-dot');
+            if (dot) {
+                dot.classList.toggle('syncing', syncing);
+            }
+            
+            const span = indicator.querySelector('span');
+            if (span) {
+                if (this.demoMode) {
+                    span.textContent = 'Demo Mode';
+                } else {
+                    span.textContent = syncing ? 'Syncing...' : 'Synced';
+                }
+            }
+        }
+    }
+
+    // Database operations
+    async loadUserData() {
+        if (!this.user || this.demoMode) return;
+
         try {
-            if (refreshBtn) {
-                refreshBtn.disabled = true;
-                refreshBtn.classList.add('loading');
-                refreshBtn.textContent = '';
+            await Promise.all([
+                this.loadAccounts(),
+                this.loadTransactions(),
+                this.loadCurrencyRates()
+            ]);
+            
+            this.renderUI();
+        } catch (error) {
+            console.error('Failed to load user data:', error);
+            this.showToast('Failed to load data', 'error');
+        }
+    }
+
+    async loadAccounts() {
+        if (!this.user || this.demoMode) return;
+
+        try {
+            const { data, error } = await this.supabase
+                .from('accounts')
+                .select('*')
+                .eq('user_id', this.user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            this.accounts = data || [];
+            console.log('Loaded accounts:', this.accounts.length);
+        } catch (error) {
+            console.error('Failed to load accounts:', error);
+            throw error;
+        }
+    }
+
+    async loadTransactions() {
+        if (!this.user || this.demoMode) return;
+
+        try {
+            const { data, error } = await this.supabase
+                .from('transactions')
+                .select('*')
+                .eq('user_id', this.user.id)
+                .order('date', { ascending: false })
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            this.transactions = data || [];
+            console.log('Loaded transactions:', this.transactions.length);
+        } catch (error) {
+            console.error('Failed to load transactions:', error);
+            throw error;
+        }
+    }
+
+    async createAccountInDB(accountData) {
+        if (this.demoMode) {
+            // Simulate database operation in demo mode
+            const newAccount = {
+                id: Date.now(),
+                user_id: this.user.id,
+                name: accountData.name,
+                type: accountData.type,
+                balance: parseFloat(accountData.balance) || 0,
+                currency: accountData.currency,
+                bank_name: accountData.bankName || null,
+                account_number: accountData.accountNumber || null,
+                account_holder: accountData.accountHolder || null,
+                notes: accountData.notes || null,
+                created_at: new Date().toISOString()
+            };
+            
+            this.accounts.push(newAccount);
+            return newAccount;
+        }
+
+        const { data, error } = await this.supabase
+            .from('accounts')
+            .insert({
+                user_id: this.user.id,
+                name: accountData.name,
+                type: accountData.type,
+                balance: parseFloat(accountData.balance) || 0,
+                currency: accountData.currency,
+                bank_name: accountData.bankName || null,
+                account_number: accountData.accountNumber || null,
+                account_holder: accountData.accountHolder || null,
+                notes: accountData.notes || null
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async updateAccountInDB(accountId, accountData) {
+        if (this.demoMode) {
+            const accountIndex = this.accounts.findIndex(a => a.id === accountId);
+            if (accountIndex >= 0) {
+                this.accounts[accountIndex] = {
+                    ...this.accounts[accountIndex],
+                    name: accountData.name,
+                    type: accountData.type,
+                    balance: parseFloat(accountData.balance),
+                    currency: accountData.currency,
+                    bank_name: accountData.bankName || null,
+                    account_number: accountData.accountNumber || null,
+                    account_holder: accountData.accountHolder || null,
+                    notes: accountData.notes || null,
+                    updated_at: new Date().toISOString()
+                };
+                return this.accounts[accountIndex];
             }
+            throw new Error('Account not found');
+        }
+
+        const { data, error } = await this.supabase
+            .from('accounts')
+            .update({
+                name: accountData.name,
+                type: accountData.type,
+                balance: parseFloat(accountData.balance),
+                currency: accountData.currency,
+                bank_name: accountData.bankName || null,
+                account_number: accountData.accountNumber || null,
+                account_holder: accountData.accountHolder || null,
+                notes: accountData.notes || null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', accountId)
+            .eq('user_id', this.user.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteAccountFromDB(accountId) {
+        if (this.demoMode) {
+            // Remove transactions for this account
+            this.transactions = this.transactions.filter(t => t.account_id !== accountId);
+            // Remove the account
+            this.accounts = this.accounts.filter(a => a.id !== accountId);
+            return;
+        }
+
+        // First delete all transactions for this account
+        await this.supabase
+            .from('transactions')
+            .delete()
+            .eq('account_id', accountId)
+            .eq('user_id', this.user.id);
+
+        // Then delete the account
+        const { error } = await this.supabase
+            .from('accounts')
+            .delete()
+            .eq('id', accountId)
+            .eq('user_id', this.user.id);
+
+        if (error) throw error;
+    }
+
+    async createTransactionInDB(transactionData) {
+        if (this.demoMode) {
+            // Find account and update balance
+            const account = this.accounts.find(a => a.id === parseInt(transactionData.accountId));
+            if (!account) throw new Error('Account not found');
+
+            const amount = parseFloat(transactionData.amount);
+            account.balance = transactionData.type === 'expense' 
+                ? account.balance - amount 
+                : account.balance + amount;
+
+            // Create transaction
+            const newTransaction = {
+                id: Date.now(),
+                user_id: this.user.id,
+                account_id: parseInt(transactionData.accountId),
+                amount: amount,
+                description: transactionData.description,
+                category: transactionData.category,
+                type: transactionData.type,
+                currency: account.currency,
+                date: transactionData.date,
+                created_at: new Date().toISOString()
+            };
+
+            this.transactions.unshift(newTransaction);
+            return newTransaction;
+        }
+
+        // First, update account balance
+        const account = this.accounts.find(a => a.id === parseInt(transactionData.accountId));
+        if (!account) throw new Error('Account not found');
+
+        const amount = parseFloat(transactionData.amount);
+        const newBalance = transactionData.type === 'expense' 
+            ? account.balance - amount 
+            : account.balance + amount;
+
+        // Update account balance
+        await this.supabase
+            .from('accounts')
+            .update({ balance: newBalance })
+            .eq('id', account.id)
+            .eq('user_id', this.user.id);
+
+        // Create transaction
+        const { data, error } = await this.supabase
+            .from('transactions')
+            .insert({
+                user_id: this.user.id,
+                account_id: parseInt(transactionData.accountId),
+                amount: amount,
+                description: transactionData.description,
+                category: transactionData.category,
+                type: transactionData.type,
+                currency: account.currency,
+                date: transactionData.date
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async updateTransactionInDB(transactionId, transactionData) {
+        if (this.demoMode) {
+            // Get original transaction to calculate balance adjustment
+            const originalTransaction = this.transactions.find(t => t.id === transactionId);
+            if (!originalTransaction) throw new Error('Transaction not found');
+
+            const account = this.accounts.find(a => a.id === originalTransaction.account_id);
+            if (!account) throw new Error('Account not found');
+
+            // Reverse original transaction
+            const originalAmount = originalTransaction.amount;
+            const newAmount = parseFloat(transactionData.amount);
             
-            const url = `https://api.exchangerate.host/latest?base=${encodeURIComponent(base)}`;
-            console.log('Fetching from URL:', url);
-            
-            const res = await fetch(url);
-            
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            let balanceAdjustment = 0;
+            if (originalTransaction.type === 'expense') {
+                balanceAdjustment += originalAmount; // Add back
+            } else {
+                balanceAdjustment -= originalAmount; // Subtract back
             }
+
+            // Apply new transaction
+            if (transactionData.type === 'expense') {
+                balanceAdjustment -= newAmount;
+            } else {
+                balanceAdjustment += newAmount;
+            }
+
+            account.balance += balanceAdjustment;
+
+            // Update transaction
+            const transactionIndex = this.transactions.findIndex(t => t.id === transactionId);
+            if (transactionIndex >= 0) {
+                this.transactions[transactionIndex] = {
+                    ...this.transactions[transactionIndex],
+                    amount: newAmount,
+                    description: transactionData.description,
+                    category: transactionData.category,
+                    type: transactionData.type,
+                    date: transactionData.date,
+                    updated_at: new Date().toISOString()
+                };
+                return this.transactions[transactionIndex];
+            }
+            throw new Error('Transaction not found');
+        }
+
+        // Get original transaction to calculate balance adjustment
+        const originalTransaction = this.transactions.find(t => t.id === transactionId);
+        if (!originalTransaction) throw new Error('Transaction not found');
+
+        const account = this.accounts.find(a => a.id === originalTransaction.account_id);
+        if (!account) throw new Error('Account not found');
+
+        // Reverse original transaction
+        const originalAmount = originalTransaction.amount;
+        const newAmount = parseFloat(transactionData.amount);
+        
+        let balanceAdjustment = 0;
+        if (originalTransaction.type === 'expense') {
+            balanceAdjustment += originalAmount; // Add back
+        } else {
+            balanceAdjustment -= originalAmount; // Subtract back
+        }
+
+        // Apply new transaction
+        if (transactionData.type === 'expense') {
+            balanceAdjustment -= newAmount;
+        } else {
+            balanceAdjustment += newAmount;
+        }
+
+        const newBalance = account.balance + balanceAdjustment;
+
+        // Update account balance
+        await this.supabase
+            .from('accounts')
+            .update({ balance: newBalance })
+            .eq('id', account.id)
+            .eq('user_id', this.user.id);
+
+        // Update transaction
+        const { data, error } = await this.supabase
+            .from('transactions')
+            .update({
+                amount: newAmount,
+                description: transactionData.description,
+                category: transactionData.category,
+                type: transactionData.type,
+                date: transactionData.date,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', transactionId)
+            .eq('user_id', this.user.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteTransactionFromDB(transactionId) {
+        if (this.demoMode) {
+            // Get transaction to reverse balance change
+            const transaction = this.transactions.find(t => t.id === transactionId);
+            if (!transaction) throw new Error('Transaction not found');
+
+            const account = this.accounts.find(a => a.id === transaction.account_id);
+            if (!account) throw new Error('Account not found');
+
+            // Reverse transaction effect on balance
+            const balanceAdjustment = transaction.type === 'expense' 
+                ? transaction.amount  // Add back expense
+                : -transaction.amount; // Subtract back income
+
+            account.balance += balanceAdjustment;
+
+            // Remove transaction
+            this.transactions = this.transactions.filter(t => t.id !== transactionId);
+            return;
+        }
+
+        // Get transaction to reverse balance change
+        const transaction = this.transactions.find(t => t.id === transactionId);
+        if (!transaction) throw new Error('Transaction not found');
+
+        const account = this.accounts.find(a => a.id === transaction.account_id);
+        if (!account) throw new Error('Account not found');
+
+        // Reverse transaction effect on balance
+        const balanceAdjustment = transaction.type === 'expense' 
+            ? transaction.amount  // Add back expense
+            : -transaction.amount; // Subtract back income
+
+        const newBalance = account.balance + balanceAdjustment;
+
+        // Update account balance
+        await this.supabase
+            .from('accounts')
+            .update({ balance: newBalance })
+            .eq('id', account.id)
+            .eq('user_id', this.user.id);
+
+        // Delete transaction
+        const { error } = await this.supabase
+            .from('transactions')
+            .delete()
+            .eq('id', transactionId)
+            .eq('user_id', this.user.id);
+
+        if (error) throw error;
+    }
+
+    // Currency rates management
+    async syncCurrencyRates() {
+        try {
+            console.log('Syncing currency rates...');
             
-            const data = await res.json();
-            console.log('FX API response:', data);
+            const response = await fetch('https://api.exchangerate.host/latest?base=USD');
+            const data = await response.json();
             
-            if (data && data.rates && typeof data.rates === 'object') {
-                this.fxRates = data.rates;
-                this.fxBase = data.base || base;
-                this.lastFxUpdate = Date.now();
-                
-                // Persist to storage
-                try {
-                    localStorage.setItem('financeApp_fxRates', JSON.stringify(this.fxRates));
-                    localStorage.setItem('financeApp_fxTimestamp', String(this.lastFxUpdate));
-                } catch (e) {
-                    console.warn('Failed to save FX rates to storage:', e);
+            if (data && data.rates) {
+                if (!this.demoMode) {
+                    // Save to database
+                    await this.supabase
+                        .from('currency_rates')
+                        .upsert({
+                            base_currency: 'USD',
+                            rates: data.rates,
+                            last_updated: new Date().toISOString()
+                        }, {
+                            onConflict: 'base_currency'
+                        });
                 }
 
-                // Update currency list dynamically from API keys
-                this.updateCurrenciesFromRates();
+                this.currencyRates = data.rates;
+                this.lastFxUpdate = Date.now();
                 
-                // Update UI
+                this.updateCurrenciesFromRates();
                 this.renderFxUpdateInfo();
                 this.renderUI();
                 
-                console.log('FX rates updated successfully. Base:', this.fxBase, 'Currencies:', Object.keys(this.fxRates).length);
-                
-                // Show success message
-                this.showToast('Exchange rates updated successfully!', 'success');
-            } else {
-                throw new Error('Invalid FX API response format');
+                console.log('Currency rates synced successfully');
             }
-        } catch (e) {
-            console.error('FX fetch failed:', e);
-            this.showToast('Unable to update rates. Using last saved data.', 'error');
-            
-            // If we have no saved rates, show fallback message
-            if (!this.fxRates) {
-                console.log('No saved rates available, using static fallback rates');
-            }
-        } finally {
-            if (refreshBtn) {
-                refreshBtn.disabled = false;
-                refreshBtn.classList.remove('loading');
-                refreshBtn.textContent = 'Refresh Exchange Rates';
+        } catch (error) {
+            console.error('Failed to sync currency rates:', error);
+            // Load cached rates from database
+            if (!this.demoMode) {
+                await this.loadCurrencyRates();
             }
         }
+    }
+
+    async loadCurrencyRates() {
+        if (this.demoMode) return;
+        
+        try {
+            const { data, error } = await this.supabase
+                .from('currency_rates')
+                .select('*')
+                .eq('base_currency', 'USD')
+                .single();
+
+            if (data && !error) {
+                this.currencyRates = data.rates;
+                this.lastFxUpdate = new Date(data.last_updated).getTime();
+                this.updateCurrenciesFromRates();
+                this.renderFxUpdateInfo();
+            }
+        } catch (error) {
+            console.error('Failed to load currency rates:', error);
+        }
+    }
+
+    updateCurrenciesFromRates() {
+        if (!this.currencyRates || Object.keys(this.currencyRates).length === 0) return;
+
+        const symbolMap = {
+            USD: '$', EUR: '€', GBP: '£', SEK: 'kr', NOK: 'kr', DKK: 'kr', 
+            JPY: '¥', CNY: '¥', AUD: 'A$', CAD: 'C$', CHF: 'Fr'
+        };
+
+        // Update currencies with live rates
+        const codes = Object.keys(this.currencyRates).sort();
+        this.currencies = codes.map(code => ({
+            code,
+            symbol: symbolMap[code] || code,
+            name: code,
+            rate: this.currencyRates[code]
+        }));
+
+        // Ensure USD is included with rate 1
+        if (!this.currencies.find(c => c.code === 'USD')) {
+            this.currencies.unshift({ 
+                code: 'USD', 
+                symbol: '$', 
+                name: 'US Dollar', 
+                rate: 1 
+            });
+        }
+
+        this.populateCurrencySelectors();
     }
 
     renderFxUpdateInfo() {
@@ -286,17 +1088,11 @@ class FinanceApp {
                     const rel = dayjs(this.lastFxUpdate).fromNow();
                     el.textContent = `Rates updated: ${rel}`;
                 } else {
-                    // Fallback if dayjs relative time is not available
-                    const now = Date.now();
-                    const diff = now - this.lastFxUpdate;
-                    const minutes = Math.floor(diff / (1000 * 60));
+                    const minutes = Math.floor((Date.now() - this.lastFxUpdate) / (1000 * 60));
                     const hours = Math.floor(minutes / 60);
-                    const days = Math.floor(hours / 24);
                     
                     let timeAgo;
-                    if (days > 0) {
-                        timeAgo = `${days} day${days > 1 ? 's' : ''} ago`;
-                    } else if (hours > 0) {
+                    if (hours > 0) {
                         timeAgo = `${hours} hour${hours > 1 ? 's' : ''} ago`;
                     } else if (minutes > 0) {
                         timeAgo = `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
@@ -314,161 +1110,153 @@ class FinanceApp {
         }
     }
 
-    updateCurrenciesFromRates() {
-        if (!this.fxRates) return;
-        
-        const symbolMap = {
-            USD: '$', EUR: '€', GBP: '£', SEK: 'kr', NOK: 'kr', DKK: 'kr', JPY: '¥', CNY: '¥',
-            AUD: 'A$', CAD: 'C$', CHF: 'Fr', NZD: '$', INR: '₹', ZAR: 'R', RUB: '₽',
-            KRW: '₩', SGD: '$', HKD: '$', MXN: '$', BRL: 'R$', TRY: '₺', PLN: 'zł',
-            CZK: 'Kč', HUF: 'Ft', ILS: '₪', AED: 'د.إ', SAR: '﷼', THB: '฿', PHP: '₱', 
-            RON: 'lei', BGN: 'лв'
-        };
-
-        // Build new currencies list with rates relative to fxBase
-        const codes = Object.keys(this.fxRates).sort();
-        this.currencies = codes.map(code => ({
-            code,
-            symbol: symbolMap[code] || code,
-            name: code, // Could be enhanced with full names
-            rate: this.fxRates[code]
-        }));
-
-        // Ensure base currency is present with rate 1
-        if (!this.fxRates[this.fxBase]) {
-            this.fxRates[this.fxBase] = 1;
+    // CRUD Operations with offline support
+    async createAccount(accountData) {
+        try {
+            if (this.isOnline && !this.demoMode) {
+                const newAccount = await this.createAccountInDB(accountData);
+                this.showToast('Account created successfully!', 'success');
+                return newAccount;
+            } else if (this.demoMode) {
+                const newAccount = await this.createAccountInDB(accountData);
+                this.renderUI();
+                this.showToast('Account created in demo mode!', 'success');
+                return newAccount;
+            } else {
+                this.offlineQueue.push({ type: 'create_account', data: accountData });
+                this.showToast('Account saved offline. Will sync when connected.', 'success');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to create account:', error);
+            this.showToast('Failed to create account', 'error');
+            throw error;
         }
-        if (!this.currencies.find(c => c.code === this.fxBase)) {
-            this.currencies.unshift({ 
-                code: this.fxBase, 
-                symbol: symbolMap[this.fxBase] || this.fxBase, 
-                name: this.fxBase, 
-                rate: 1 
-            });
-        }
-
-        console.log('Updated currencies from API:', this.currencies.length, 'currencies available');
-
-        // Update dropdowns and lists with new codes
-        this.refreshCurrencySelectorsOptions();
     }
 
-    refreshCurrencySelectorsOptions() {
-        const selects = [
-            document.getElementById('displayCurrency'),
-            document.getElementById('settingsCurrencySelect')
-        ].filter(Boolean);
-
-        selects.forEach(sel => {
-            const current = this.displayCurrency;
-            sel.innerHTML = '';
-            this.currencies
-                .slice() // copy
-                .sort((a, b) => a.code.localeCompare(b.code))
-                .forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c.code;
-                    opt.textContent = `${c.code}`;
-                    sel.appendChild(opt);
-                });
-            sel.value = current;
-        });
-
-        // Currency selector modal list
-        this.populateCurrencySelectors();
+    async updateAccount(accountId, accountData) {
+        try {
+            if (this.isOnline && !this.demoMode) {
+                const updatedAccount = await this.updateAccountInDB(accountId, accountData);
+                this.showToast('Account updated successfully!', 'success');
+                return updatedAccount;
+            } else if (this.demoMode) {
+                const updatedAccount = await this.updateAccountInDB(accountId, accountData);
+                this.renderUI();
+                this.showToast('Account updated in demo mode!', 'success');
+                return updatedAccount;
+            } else {
+                this.offlineQueue.push({ type: 'update_account', data: { id: accountId, ...accountData } });
+                this.showToast('Account updated offline. Will sync when connected.', 'success');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to update account:', error);
+            this.showToast('Failed to update account', 'error');
+            throw error;
+        }
     }
 
-    // Transactions
-    createTransaction(transactionData) {
-        const account = this.accounts.find(a => a.id === parseInt(transactionData.accountId));
-        if (!account) {
-            throw new Error('Account not found');
+    async deleteAccount(accountId) {
+        try {
+            if (this.isOnline && !this.demoMode) {
+                await this.deleteAccountFromDB(accountId);
+                this.showToast('Account deleted successfully!', 'success');
+            } else if (this.demoMode) {
+                await this.deleteAccountFromDB(accountId);
+                this.renderUI();
+                this.showToast('Account deleted in demo mode!', 'success');
+            } else {
+                this.offlineQueue.push({ type: 'delete_account', data: { id: accountId } });
+                this.showToast('Account deleted offline. Will sync when connected.', 'success');
+            }
+        } catch (error) {
+            console.error('Failed to delete account:', error);
+            this.showToast('Failed to delete account', 'error');
+            throw error;
         }
-
-        const validation = this.validateTransaction(
-            transactionData.amount, 
-            transactionData.accountId, 
-            transactionData.type
-        );
-        if (!validation.valid) {
-            throw new Error(validation.message);
-        }
-
-        const newTransaction = {
-            id: Date.now(),
-            amount: parseFloat(transactionData.amount),
-            description: transactionData.description,
-            category: transactionData.category,
-            type: transactionData.type,
-            accountId: parseInt(transactionData.accountId),
-            date: transactionData.date || new Date().toISOString().split('T')[0],
-            currency: account.currency,
-            createdAt: new Date().toISOString()
-        };
-
-        if (transactionData.type === 'expense') {
-            account.balance -= parseFloat(transactionData.amount);
-        } else {
-            account.balance += parseFloat(transactionData.amount);
-        }
-
-        this.transactions.push(newTransaction);
-        this.saveData();
-        this.renderUI();
-        
-        console.log('Transaction created:', newTransaction);
-        return newTransaction;
     }
 
-    validateTransaction(amount, accountId, type) {
-        const account = this.accounts.find(a => a.id === parseInt(accountId));
-        if (!account) {
-            return { valid: false, message: 'Please select an account' };
+    async createTransaction(transactionData) {
+        try {
+            if (this.isOnline && !this.demoMode) {
+                const newTransaction = await this.createTransactionInDB(transactionData);
+                this.showToast('Transaction created successfully!', 'success');
+                return newTransaction;
+            } else if (this.demoMode) {
+                const newTransaction = await this.createTransactionInDB(transactionData);
+                this.renderUI();
+                this.showToast('Transaction created in demo mode!', 'success');
+                return newTransaction;
+            } else {
+                this.offlineQueue.push({ type: 'create_transaction', data: transactionData });
+                this.showToast('Transaction saved offline. Will sync when connected.', 'success');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to create transaction:', error);
+            this.showToast('Failed to create transaction', 'error');
+            throw error;
         }
-        if (type === 'expense' && parseFloat(amount) > account.balance) {
-            return { 
-                valid: false, 
-                message: `Insufficient balance. Account balance: ${this.formatCurrency(account.balance, account.currency)}` 
-            };
-        }
-        return { valid: true };
     }
 
-    // Currency Conversion: Prefer LIVE fxRates
+    async updateTransaction(transactionId, transactionData) {
+        try {
+            if (this.isOnline && !this.demoMode) {
+                const updatedTransaction = await this.updateTransactionInDB(transactionId, transactionData);
+                this.showToast('Transaction updated successfully!', 'success');
+                return updatedTransaction;
+            } else if (this.demoMode) {
+                const updatedTransaction = await this.updateTransactionInDB(transactionId, transactionData);
+                this.renderUI();
+                this.showToast('Transaction updated in demo mode!', 'success');
+                return updatedTransaction;
+            } else {
+                this.offlineQueue.push({ type: 'update_transaction', data: { id: transactionId, ...transactionData } });
+                this.showToast('Transaction updated offline. Will sync when connected.', 'success');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to update transaction:', error);
+            this.showToast('Failed to update transaction', 'error');
+            throw error;
+        }
+    }
+
+    async deleteTransaction(transactionId) {
+        try {
+            if (this.isOnline && !this.demoMode) {
+                await this.deleteTransactionFromDB(transactionId);
+                this.showToast('Transaction deleted successfully!', 'success');
+            } else if (this.demoMode) {
+                await this.deleteTransactionFromDB(transactionId);
+                this.renderUI();
+                this.showToast('Transaction deleted in demo mode!', 'success');
+            } else {
+                this.offlineQueue.push({ type: 'delete_transaction', data: { id: transactionId } });
+                this.showToast('Transaction deleted offline. Will sync when connected.', 'success');
+            }
+        } catch (error) {
+            console.error('Failed to delete transaction:', error);
+            this.showToast('Failed to delete transaction', 'error');
+            throw error;
+        }
+    }
+
+    // Currency conversion
     convertCurrency(amount, fromCurrency, toCurrency) {
         if (fromCurrency === toCurrency) return amount;
 
-        if (this.fxRates && this.fxBase) {
-            // Convert via fxBase using live rates
-            const rates = this.fxRates;
-            const base = this.fxBase;
-
-            // First to base
-            let amountInBase = amount;
-            if (fromCurrency !== base) {
-                const fromRate = rates[fromCurrency];
-                if (!fromRate || fromRate === 0) {
-                    console.warn(`No rate for ${fromCurrency}, falling back to static rates`);
-                    return this.convertCurrencyStatic(amount, fromCurrency, toCurrency);
-                }
-                amountInBase = amount / fromRate;
-            }
+        if (this.currencyRates && Object.keys(this.currencyRates).length > 0) {
+            const fromRate = this.currencyRates[fromCurrency] || 1;
+            const toRate = this.currencyRates[toCurrency] || 1;
             
-            // Then to target
-            if (toCurrency === base) return amountInBase;
-            const toRate = rates[toCurrency];
-            if (!toRate || toRate === 0) {
-                console.warn(`No rate for ${toCurrency}, falling back to static rates`);
-                return this.convertCurrencyStatic(amount, fromCurrency, toCurrency);
-            }
-            return amountInBase * toRate;
+            // Convert through USD base
+            const usdAmount = amount / fromRate;
+            return usdAmount * toRate;
         }
 
-        // Fallback to static currency table
-        return this.convertCurrencyStatic(amount, fromCurrency, toCurrency);
-    }
-
-    convertCurrencyStatic(amount, fromCurrency, toCurrency) {
+        // Fallback to static rates
         const fromRate = this.currencies.find(c => c.code === fromCurrency)?.rate || 1;
         const toRate = this.currencies.find(c => c.code === toCurrency)?.rate || 1;
         const usdAmount = amount / fromRate;
@@ -489,6 +1277,8 @@ class FinanceApp {
 
     // UI Rendering
     renderUI() {
+        if (!this.user) return;
+        
         this.updateNetWorth();
         this.updateMonthlySummary();
         this.updateAccountsList();
@@ -533,8 +1323,7 @@ class FinanceApp {
                        transactionDate.getFullYear() === currentYear;
             })
             .reduce((total, t) => {
-                const account = this.accounts.find(a => a.id === t.accountId);
-                const convertedAmount = this.convertCurrency(t.amount, account?.currency || t.currency, this.displayCurrency);
+                const convertedAmount = this.convertCurrency(t.amount, t.currency, this.displayCurrency);
                 return total + convertedAmount;
             }, 0);
 
@@ -546,8 +1335,7 @@ class FinanceApp {
                        transactionDate.getFullYear() === currentYear;
             })
             .reduce((total, t) => {
-                const account = this.accounts.find(a => a.id === t.accountId);
-                const convertedAmount = this.convertCurrency(t.amount, account?.currency || t.currency, this.displayCurrency);
+                const convertedAmount = this.convertCurrency(t.amount, t.currency, this.displayCurrency);
                 return total + convertedAmount;
             }, 0);
 
@@ -570,8 +1358,21 @@ class FinanceApp {
         const accountsList = document.getElementById('accountsList');
         if (!accountsList) return;
 
-        accountsList.innerHTML = '';
+        if (this.accounts.length === 0) {
+            accountsList.innerHTML = `
+                <div class="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    <p>No accounts yet</p>
+                    <span>Add your first account to start tracking your finances</span>
+                </div>
+            `;
+            return;
+        }
 
+        accountsList.innerHTML = '';
         this.accounts.forEach(account => {
             const accountCard = this.createAccountCard(account);
             accountsList.appendChild(accountCard);
@@ -589,25 +1390,53 @@ class FinanceApp {
                 </div>
                 <div class="account-details">
                     <div class="account-name">${account.name}</div>
-                    <div class="account-meta">${account.type}${account.accountNumber ? ' • ' + account.accountNumber : ''}</div>
+                    <div class="account-meta">${account.type}${account.account_number ? ' • ' + account.account_number : ''}</div>
                 </div>
             </div>
             <div class="account-balance">
                 <div class="primary-balance">${this.formatCurrency(account.balance, account.currency)}</div>
                 <div class="converted-balance">≈ ${this.formatCurrency(convertedBalance, this.displayCurrency)}</div>
-                <button class="add-money-btn" data-add-money="${account.id}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
+            </div>
+            <div class="account-actions">
+                <button class="account-action-btn edit" data-edit-account="${account.id}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                </button>
+                <button class="account-action-btn delete" data-delete-account="${account.id}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"/>
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
                     </svg>
                 </button>
             </div>
         `;
-        // Attach handler
-        const btn = card.querySelector('[data-add-money]');
-        if (btn) {
-            btn.addEventListener('click', () => this.showAddMoneyModal(account.id));
+        
+        // Add event listeners
+        const editBtn = card.querySelector('[data-edit-account]');
+        const deleteBtn = card.querySelector('[data-delete-account]');
+        
+        if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showEditAccountModal(account);
+            });
         }
+        
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showDeleteConfirmation(
+                    'Delete Account',
+                    `Are you sure you want to delete "${account.name}"? This will also delete all associated transactions.`,
+                    () => this.handleDeleteAccount(account.id)
+                );
+            });
+        }
+        
         return card;
     }
 
@@ -654,18 +1483,18 @@ class FinanceApp {
 
         const recentTransactions = this.transactions
             .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .slice(0, 5);
+            .slice(0, 10);
 
         transactionsList.innerHTML = recentTransactions.map(transaction => {
-            const account = this.accounts.find(a => a.id === transaction.accountId);
+            const account = this.accounts.find(a => a.id === transaction.account_id);
             const convertedAmount = this.convertCurrency(
                 transaction.amount, 
-                account?.currency || transaction.currency, 
+                transaction.currency, 
                 this.displayCurrency
             );
 
             return `
-                <div class="transaction-item">
+                <div class="transaction-item" data-transaction-id="${transaction.id}">
                     <div class="transaction-info">
                         <div class="transaction-icon ${transaction.type}">
                             ${transaction.type === 'expense' ? '-' : '+'}
@@ -675,7 +1504,7 @@ class FinanceApp {
                             <div class="transaction-meta">
                                 <span>${transaction.category}</span>
                                 <span>•</span>
-                                <span class="transaction-account">from ${account?.name || 'Unknown Account'}</span>
+                                <span class="transaction-account">${account?.name || 'Unknown Account'}</span>
                                 <span>•</span>
                                 <span>${new Date(transaction.date).toLocaleDateString()}</span>
                             </div>
@@ -684,9 +1513,52 @@ class FinanceApp {
                     <div class="transaction-amount ${transaction.type}">
                         ${transaction.type === 'expense' ? '-' : '+'}${this.formatCurrency(convertedAmount, this.displayCurrency)}
                     </div>
+                    <div class="transaction-actions">
+                        <button class="transaction-action-btn edit" data-edit-transaction="${transaction.id}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                        <button class="transaction-action-btn delete" data-delete-transaction="${transaction.id}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3,6 5,6 21,6"/>
+                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
+
+        // Add event listeners for transaction actions
+        transactionsList.querySelectorAll('[data-edit-transaction]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const transactionId = parseInt(btn.dataset.editTransaction);
+                const transaction = this.transactions.find(t => t.id === transactionId);
+                if (transaction) {
+                    this.showEditTransactionModal(transaction);
+                }
+            });
+        });
+
+        transactionsList.querySelectorAll('[data-delete-transaction]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const transactionId = parseInt(btn.dataset.deleteTransaction);
+                const transaction = this.transactions.find(t => t.id === transactionId);
+                if (transaction) {
+                    this.showDeleteConfirmation(
+                        'Delete Transaction',
+                        `Are you sure you want to delete the transaction "${transaction.description}"?`,
+                        () => this.handleDeleteTransaction(transactionId)
+                    );
+                }
+            });
+        });
     }
 
     updateAnalytics() {
@@ -719,10 +1591,9 @@ class FinanceApp {
 
         const categoryTotals = {};
         monthlyExpenses.forEach(expense => {
-            const account = this.accounts.find(a => a.id === expense.accountId);
             const convertedAmount = this.convertCurrency(
                 expense.amount, 
-                account?.currency || expense.currency, 
+                expense.currency, 
                 this.displayCurrency
             );
             categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + convertedAmount;
@@ -784,107 +1655,109 @@ class FinanceApp {
         }
     }
 
-    setupTransactionValidation() {
-        const amountInput = document.getElementById('transactionAmount');
-        const accountSelect = document.getElementById('accountSelect');
-        const typeSelect = document.getElementById('transactionType');
-        const warningDiv = document.getElementById('balanceWarning');
-        const submitBtn = document.getElementById('submitTransactionBtn');
-        const dateInput = document.getElementById('transactionDate');
-
-        if (!amountInput || !accountSelect || !typeSelect) return;
-
-        if (dateInput) {
-            dateInput.value = new Date().toISOString().split('T')[0];
-        }
-
-        const validateForm = () => {
-            const amount = parseFloat(amountInput.value) || 0;
-            const accountId = parseInt(accountSelect.value);
-            const type = typeSelect.value;
-
-            if (warningDiv) {
-                warningDiv.textContent = '';
-                warningDiv.className = 'validation-message';
-            }
-
-            amountInput.classList.remove('error', 'warning');
-
-            if (amount > 0 && accountId && type === 'expense') {
-                const validation = this.validateTransaction(amount, accountId, type);
-                if (!validation.valid) {
-                    if (warningDiv) {
-                        warningDiv.textContent = validation.message;
-                        warningDiv.classList.add('error');
-                    }
-                    amountInput.classList.add('error');
-                    if (submitBtn) submitBtn.disabled = true;
-                    return false;
-                }
-            }
-            if (submitBtn) submitBtn.disabled = false;
-            return true;
-        };
-
-        amountInput.addEventListener('input', validateForm);
-        accountSelect.addEventListener('change', validateForm);
-        typeSelect.addEventListener('change', validateForm);
-    }
-
     // Event Listeners
     setupEventListeners() {
         console.log('Setting up event listeners...');
 
+        // Auth button
+        const signInBtn = document.getElementById('signInBtn');
+        if (signInBtn) {
+            signInBtn.addEventListener('click', () => this.signInWithGoogle());
+        }
+
+        // Sign out button
+        const signOutBtn = document.getElementById('signOutBtn');
+        if (signOutBtn) {
+            signOutBtn.addEventListener('click', () => this.signOut());
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav-btn').forEach((btn, index) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const screen = btn.dataset.screen;
+                this.showScreen(screen);
+            });
+        });
+
         // Balance toggle
         const toggleBalance = document.getElementById('toggleBalance');
         if (toggleBalance) {
-            toggleBalance.addEventListener('click', (e) => {
-                e.preventDefault();
+            toggleBalance.addEventListener('click', () => {
                 this.balanceVisible = !this.balanceVisible;
-                this.saveData();
                 this.updateNetWorth();
             });
         }
 
-        // Currency selector modal open
+        // Currency selector
         const currencySelector = document.getElementById('currencySelector');
         if (currencySelector) {
-            currencySelector.addEventListener('click', (e) => {
-                e.preventDefault();
+            currencySelector.addEventListener('click', () => {
                 this.showModal('currencySelectorModal');
             });
         }
 
-        // Display currency change (Accounts screen)
+        // Display currency changes
         const displayCurrency = document.getElementById('displayCurrency');
         if (displayCurrency) {
             displayCurrency.addEventListener('change', (e) => {
                 this.displayCurrency = e.target.value;
-                this.saveData();
                 this.renderUI();
             });
         }
 
-        // Settings currency change (Settings screen)
         const settingsCurrencySelect = document.getElementById('settingsCurrencySelect');
         if (settingsCurrencySelect) {
             settingsCurrencySelect.addEventListener('change', (e) => {
                 this.displayCurrency = e.target.value;
-                this.saveData();
                 this.renderUI();
             });
         }
 
-        // Manual refresh FX
+        // Refresh FX button
         const refreshFxBtn = document.getElementById('refreshFxBtn');
         if (refreshFxBtn) {
-            refreshFxBtn.addEventListener('click', () => {
-                console.log('Manual FX refresh clicked');
-                this.fetchFxRates(this.fxBase || 'USD');
+            refreshFxBtn.addEventListener('click', () => this.syncCurrencyRates());
+        }
+
+        // Realtime toggle
+        const realtimeToggle = document.getElementById('realtimeToggle');
+        if (realtimeToggle) {
+            realtimeToggle.addEventListener('change', (e) => {
+                this.realtimeEnabled = e.target.checked;
+                if (this.realtimeEnabled && !this.demoMode) {
+                    this.setupRealtimeSubscriptions();
+                }
             });
         }
 
-        // Modal controls (close)
+        // Add buttons
+        const addAccountBtn = document.getElementById('addAccountBtn');
+        const addAccountFab = document.getElementById('addAccountFab');
+        const addTransactionBtn = document.getElementById('addTransactionBtn');
+
+        if (addAccountBtn) {
+            addAccountBtn.addEventListener('click', () => this.showAddAccountModal());
+        }
+        if (addAccountFab) {
+            addAccountFab.addEventListener('click', () => this.showAddAccountModal());
+        }
+        if (addTransactionBtn) {
+            addTransactionBtn.addEventListener('click', () => this.showAddTransactionModal());
+        }
+
+        // Forms
+        const addAccountForm = document.getElementById('addAccountForm');
+        const addTransactionForm = document.getElementById('addTransactionForm');
+
+        if (addAccountForm) {
+            addAccountForm.addEventListener('submit', (e) => this.handleAccountForm(e));
+        }
+        if (addTransactionForm) {
+            addTransactionForm.addEventListener('submit', (e) => this.handleTransactionForm(e));
+        }
+
+        // Modal controls
         document.querySelectorAll('[data-modal]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -893,48 +1766,12 @@ class FinanceApp {
             });
         });
 
-        // Add account/transaction buttons
-        const addAccountBtn = document.getElementById('addAccountBtn');
-        const addAccountFab = document.getElementById('addAccountFab');
-        const addTransactionBtn = document.getElementById('addTransactionBtn');
-
-        if (addAccountBtn) {
-            addAccountBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.showModal('addAccountModal');
-            });
-        }
-        if (addAccountFab) {
-            addAccountFab.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.showModal('addAccountModal');
-            });
-        }
-        if (addTransactionBtn) {
-            addTransactionBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.showModal('addTransactionModal');
-            });
-        }
-
-        // Forms
-        const addAccountForm = document.getElementById('addAccountForm');
-        const addTransactionForm = document.getElementById('addTransactionForm');
-
-        if (addAccountForm) {
-            addAccountForm.addEventListener('submit', (e) => this.handleAddAccount(e));
-        }
-        if (addTransactionForm) {
-            addTransactionForm.addEventListener('submit', (e) => this.handleAddTransaction(e));
-        }
-
-        // Currency selection in modal
+        // Currency selection
         document.addEventListener('click', (e) => {
             const opt = e.target.closest('.currency-option');
             if (opt) {
                 const currencyCode = opt.dataset.currency;
                 this.displayCurrency = currencyCode;
-                this.saveData();
                 this.renderUI();
                 this.hideModal('currencySelectorModal');
             }
@@ -956,20 +1793,19 @@ class FinanceApp {
     showScreen(screenName) {
         console.log('Showing screen:', screenName);
         
-        // Update navigation
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
         const activeNavBtn = document.querySelector(`[data-screen="${screenName}"]`);
         if (activeNavBtn) activeNavBtn.classList.add('active');
 
-        // Update screens
         document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
         const target = document.getElementById(screenName);
         if (target) target.classList.add('active');
 
         this.currentScreen = screenName;
-        this.renderUI();
         
-        console.log('Screen shown:', screenName);
+        if (this.user) {
+            this.renderUI();
+        }
     }
 
     // Modal Management
@@ -978,12 +1814,6 @@ class FinanceApp {
         if (modal) {
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
-            if (modalId === 'addTransactionModal') {
-                setTimeout(() => {
-                    this.populateAccountSelectors();
-                    this.setupTransactionValidation();
-                }, 50);
-            }
         }
     }
 
@@ -992,154 +1822,312 @@ class FinanceApp {
         if (modal) {
             modal.classList.add('hidden');
             document.body.style.overflow = 'auto';
+            
+            // Reset edit states
+            if (modalId === 'addAccountModal') {
+                this.resetAccountModal();
+            } else if (modalId === 'addTransactionModal') {
+                this.resetTransactionModal();
+            }
         }
     }
 
-    // Form Handlers
-    handleAddAccount(e) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const newAccount = {
-            id: Date.now(),
-            name: formData.get('accountName'),
-            type: formData.get('accountType'),
-            balance: parseFloat(formData.get('initialBalance')) || 0,
-            currency: formData.get('currency'),
-            bankName: formData.get('bankName') || '',
-            accountNumber: formData.get('accountNumber') || '',
-            createdAt: new Date().toISOString()
-        };
-        this.accounts.push(newAccount);
-        this.saveData();
-        this.renderUI();
-        this.hideModal('addAccountModal');
-        e.target.reset();
-        this.showNotification('Account added successfully!');
+    showAddAccountModal() {
+        this.editingAccount = null;
+        this.resetAccountModal();
+        this.showModal('addAccountModal');
     }
 
-    handleAddTransaction(e) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const transactionData = {
-            amount: formData.get('amount'),
-            description: formData.get('description'),
-            category: formData.get('category'),
-            type: formData.get('type'),
-            accountId: formData.get('accountId'),
-            date: formData.get('date')
+    showEditAccountModal(account) {
+        this.editingAccount = account;
+        
+        // Populate form
+        const form = document.getElementById('addAccountForm');
+        form.accountName.value = account.name;
+        form.accountType.value = account.type;
+        form.initialBalance.value = account.balance;
+        form.currency.value = account.currency;
+        form.bankName.value = account.bank_name || '';
+        form.accountNumber.value = account.account_number || '';
+        
+        // Update modal UI
+        document.getElementById('accountModalTitle').textContent = 'Edit Account';
+        document.getElementById('saveAccountBtn').querySelector('.btn-text').textContent = 'Save Changes';
+        document.getElementById('deleteAccountBtn').classList.remove('hidden');
+        
+        this.showModal('addAccountModal');
+    }
+
+    resetAccountModal() {
+        document.getElementById('accountModalTitle').textContent = 'Add Account';
+        document.getElementById('saveAccountBtn').querySelector('.btn-text').textContent = 'Add Account';
+        document.getElementById('deleteAccountBtn').classList.add('hidden');
+        document.getElementById('addAccountForm').reset();
+    }
+
+    showAddTransactionModal() {
+        this.editingTransaction = null;
+        this.resetTransactionModal();
+        this.populateAccountSelectors();
+        this.setupTransactionValidation();
+        this.showModal('addTransactionModal');
+    }
+
+    showEditTransactionModal(transaction) {
+        this.editingTransaction = transaction;
+        this.populateAccountSelectors();
+        
+        // Populate form
+        const form = document.getElementById('addTransactionForm');
+        form.type.value = transaction.type;
+        form.accountId.value = transaction.account_id;
+        form.amount.value = transaction.amount;
+        form.description.value = transaction.description;
+        form.category.value = transaction.category;
+        form.date.value = transaction.date;
+        
+        // Update modal UI
+        document.getElementById('transactionModalTitle').textContent = 'Edit Transaction';
+        document.getElementById('submitTransactionBtn').querySelector('.btn-text').textContent = 'Save Changes';
+        document.getElementById('deleteTransactionBtn').classList.remove('hidden');
+        
+        this.setupTransactionValidation();
+        this.showModal('addTransactionModal');
+    }
+
+    resetTransactionModal() {
+        document.getElementById('transactionModalTitle').textContent = 'Add Transaction';
+        document.getElementById('submitTransactionBtn').querySelector('.btn-text').textContent = 'Add Transaction';
+        document.getElementById('deleteTransactionBtn').classList.add('hidden');
+        
+        const form = document.getElementById('addTransactionForm');
+        form.reset();
+        form.date.value = new Date().toISOString().split('T')[0];
+    }
+
+    setupTransactionValidation() {
+        const amountInput = document.getElementById('transactionAmount');
+        const accountSelect = document.getElementById('accountSelect');
+        const typeSelect = document.getElementById('transactionType');
+        const warningDiv = document.getElementById('balanceWarning');
+        const submitBtn = document.getElementById('submitTransactionBtn');
+        const dateInput = document.getElementById('transactionDate');
+
+        if (!amountInput || !accountSelect || !typeSelect) return;
+
+        if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        const validateForm = () => {
+            const amount = parseFloat(amountInput.value) || 0;
+            const accountId = parseInt(accountSelect.value);
+            const type = typeSelect.value;
+
+            if (warningDiv) {
+                warningDiv.textContent = '';
+                warningDiv.className = 'validation-message';
+            }
+
+            amountInput.classList.remove('error', 'warning');
+
+            if (amount > 0 && accountId && type === 'expense') {
+                const account = this.accounts.find(a => a.id === accountId);
+                if (account && amount > account.balance) {
+                    if (warningDiv) {
+                        warningDiv.textContent = `Insufficient balance. Account balance: ${this.formatCurrency(account.balance, account.currency)}`;
+                        warningDiv.classList.add('error');
+                    }
+                    amountInput.classList.add('error');
+                    if (submitBtn) submitBtn.disabled = true;
+                    return false;
+                }
+            }
+            
+            if (submitBtn) submitBtn.disabled = false;
+            return true;
         };
+
+        amountInput.addEventListener('input', validateForm);
+        accountSelect.addEventListener('change', validateForm);
+        typeSelect.addEventListener('change', validateForm);
+    }
+
+    showDeleteConfirmation(title, message, onConfirm) {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        
+        const confirmOk = document.getElementById('confirmOk');
+        const confirmCancel = document.getElementById('confirmCancel');
+        
+        const handleConfirm = () => {
+            onConfirm();
+            this.hideModal('confirmModal');
+            confirmOk.removeEventListener('click', handleConfirm);
+            confirmCancel.removeEventListener('click', handleCancel);
+        };
+        
+        const handleCancel = () => {
+            this.hideModal('confirmModal');
+            confirmOk.removeEventListener('click', handleConfirm);
+            confirmCancel.removeEventListener('click', handleCancel);
+        };
+        
+        confirmOk.addEventListener('click', handleConfirm);
+        confirmCancel.addEventListener('click', handleCancel);
+        
+        this.showModal('confirmModal');
+    }
+
+    // Form Handlers
+    async handleAccountForm(e) {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('saveAccountBtn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+        
         try {
-            this.createTransaction(transactionData);
+            // Show loading state
+            btnText.style.opacity = '0';
+            btnLoading.classList.remove('hidden');
+            submitBtn.disabled = true;
+            
+            const formData = new FormData(e.target);
+            const accountData = {
+                name: formData.get('accountName'),
+                type: formData.get('accountType'),
+                balance: parseFloat(formData.get('initialBalance')) || 0,
+                currency: formData.get('currency'),
+                bankName: formData.get('bankName') || '',
+                accountNumber: formData.get('accountNumber') || ''
+            };
+
+            if (this.editingAccount) {
+                await this.updateAccount(this.editingAccount.id, accountData);
+            } else {
+                await this.createAccount(accountData);
+            }
+
+            this.hideModal('addAccountModal');
+            e.target.reset();
+            
+            // Reload data to reflect changes (only if not demo mode)
+            if (!this.demoMode) {
+                await this.loadUserData();
+            }
+        } catch (error) {
+            console.error('Form submission failed:', error);
+        } finally {
+            // Reset button state
+            btnText.style.opacity = '1';
+            btnLoading.classList.add('hidden');
+            submitBtn.disabled = false;
+        }
+    }
+
+    async handleTransactionForm(e) {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitTransactionBtn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+        
+        try {
+            // Show loading state
+            btnText.style.opacity = '0';
+            btnLoading.classList.remove('hidden');
+            submitBtn.disabled = true;
+            
+            const formData = new FormData(e.target);
+            const transactionData = {
+                amount: formData.get('amount'),
+                description: formData.get('description'),
+                category: formData.get('category'),
+                type: formData.get('type'),
+                accountId: formData.get('accountId'),
+                date: formData.get('date')
+            };
+
+            if (this.editingTransaction) {
+                await this.updateTransaction(this.editingTransaction.id, transactionData);
+            } else {
+                await this.createTransaction(transactionData);
+            }
+
             this.hideModal('addTransactionModal');
             e.target.reset();
-            this.showNotification('Transaction added successfully!');
+            
+            // Reload data to reflect changes (only if not demo mode)
+            if (!this.demoMode) {
+                await this.loadUserData();
+            }
         } catch (error) {
+            console.error('Form submission failed:', error);
             const warningDiv = document.getElementById('balanceWarning');
             if (warningDiv) {
                 warningDiv.textContent = error.message;
                 warningDiv.classList.add('error');
             }
+        } finally {
+            // Reset button state
+            btnText.style.opacity = '1';
+            btnLoading.classList.add('hidden');
+            submitBtn.disabled = false;
         }
     }
 
-    showAddMoneyModal(accountId) {
-        const account = this.accounts.find(a => a.id === accountId);
-        if (account) {
-            const amount = prompt(`Add money to ${account.name}:`, '100');
-            if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
-                const transactionData = {
-                    amount: amount,
-                    description: `Deposit to ${account.name}`,
-                    category: 'Other',
-                    type: 'income',
-                    accountId: accountId,
-                    date: new Date().toISOString().split('T')[0]
-                };
-                try {
-                    this.createTransaction(transactionData);
-                    this.showNotification('Money added successfully!');
-                } catch (error) {
-                    this.showNotification('Error adding money: ' + error.message);
-                }
+    async handleDeleteAccount(accountId) {
+        try {
+            await this.deleteAccount(accountId);
+            if (!this.demoMode) {
+                await this.loadUserData();
             }
+        } catch (error) {
+            console.error('Failed to delete account:', error);
         }
     }
 
-    showNotification(message) {
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            notification.style.animation = 'slideInRight 0.3s ease-out reverse';
-            setTimeout(() => {
-                if (document.body.contains(notification)) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 3000);
+    async handleDeleteTransaction(transactionId) {
+        try {
+            await this.deleteTransaction(transactionId);
+            if (!this.demoMode) {
+                await this.loadUserData();
+            }
+        } catch (error) {
+            console.error('Failed to delete transaction:', error);
+        }
     }
 
-    showToast(message, type = 'warning') {
+    // Utility methods
+    showToast(message, type = 'success') {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.textContent = message;
         document.body.appendChild(toast);
+        
         setTimeout(() => {
             toast.style.animation = 'slideInRight 0.3s ease-out reverse';
             setTimeout(() => {
-                if (document.body.contains(toast)) document.body.removeChild(toast);
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
             }, 300);
-        }, 2500);
-    }
-
-    // PWA Registration
-    async registerServiceWorker() {
-        if ('serviceWorker' in navigator) {
-            try {
-                const swCode = `
-                    const CACHE_NAME = 'finance-app-v1';
-                    const urlsToCache = [
-                        '/',
-                        '/index.html',
-                        '/style.css',
-                        '/app.js'
-                    ];
-
-                    self.addEventListener('install', event => {
-                        event.waitUntil(
-                            caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-                        );
-                    });
-
-                    self.addEventListener('fetch', event => {
-                        event.respondWith(
-                            caches.match(event.request).then(response => {
-                                return response || fetch(event.request);
-                            })
-                        );
-                    });
-                `;
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                await navigator.serviceWorker.register(swUrl);
-                console.log('Service Worker registered successfully');
-            } catch (error) {
-                console.log('Service Worker registration failed:', error);
-            }
-        }
+        }, 3000);
     }
 }
 
-// Initialize the app when DOM is loaded (guard to avoid double-init)
-(function initOnce(){
+// Initialize the app
+(function initApp() {
     if (window.financeApp) return;
+    
     const start = () => {
         if (!window.financeApp) {
-            console.log('Starting FinanceApp...');
+            console.log('Starting Supabase Finance App...');
             window.financeApp = new FinanceApp();
         }
     };
+    
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', start);
     } else {

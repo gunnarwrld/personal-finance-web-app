@@ -9,18 +9,60 @@
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0idXJsKCNncmFkaWVudDApIi8+CjxwYXRoIGQ9Ik0xNiA4VjI0TTggMTZIMjQiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50MCIgeDE9IjAiIHkxPSIwIiB4Mj0iMzIiIHkyPSIzMiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgo8c3RvcCBzdG9wLWNvbG9yPSIjOEI1Q0Y2Ii8+CjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzNCODJGNiIvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+Cjwvc3ZnPgo=">
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkZpbmFuY2VUcmFja2VyIiwKICAic2hvcnRfbmFtZSI6ICJGaW5hbmNlVHJhY2tlciIsCiAgImRlc2NyaXB0aW9uIjogIk1vZGVybiBwZXJzb25hbCBmaW5hbmNlIHRyYWNraW5nIGFwcCIsCiAgInN0YXJ0X3VybCI6ICIvIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjRkZGRkZGIiwKICAidGhlbWVfY29sb3IiOiAiIzhCNUNGNiIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImRhdGE6aW1hZ2Uvc3ZnK3htbDtiYXNlNjQsUEhOMlp5QjNhV1IwYUQwaU1qRXlJaUJvWldsbmFIUTlJakV5TWlJZ2RtbGxkMEp2ZUQwaU1DQXdJREV5TWlBeE1qSWlJR1pwYkd3OUltNXZibVVpSUhodGJHNXpQU0pvZEhSd09pOHZkM2QzTG5rekxtOXlaeTh5TURBd0wzTjJaeUkrQ2p4eVpXTjBJSGRwWkhSb1BTSnhNakluSWlCb1pXbG5hSFE5SWpFeU1pSWdjbmc5SWpnaUlHWnBiR3c5SW5WeWJDaGpaeUFuWlhGNE1YSW5LU0NJL1BnbzhaR0psY2p3OGJHbHVaV0Z5UjNKaFpHbGxiblFnYVdROUltZHlZV1JwWlc1ME1DSWdlREU5SWpBaUlIa3hPU0l3SWlCNE1qb3lJaUo1TWpveU1qa2lJR2R5WVdScFpXNTBWVzVwZEhNOUluVnpaWEpUY0dGalpVOXVWWE5sSWpvOWMzUnZjQ0J6ZEc5d0xXTnZiRzl5UFNJak9FSTFRMFkyUWlVdENqeHpkRzl3SUc5bVpuTmxkRDBpTVNJZ2MzUnZjQzFqYjJ4dmNqMGlJek5DT0RKR05pSXZQZ282UEM5a1pXWnpQajQ4TDJSbFpuTStQZ284TDNOMlp6ND0iLAogICAgICAic2l6ZXMiOiAiMTIyeDEyMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiCiAgICB9CiAgXQp9">
     <link rel="stylesheet" href="style.css">
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- dayjs for relative time formatting -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
 </head>
 <body>
     <div class="app">
+        <!-- Authentication Screen -->
+        <div id="auth" class="screen auth-screen active">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <div class="app-logo">
+                        <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
+                            <rect width="32" height="32" rx="8" fill="url(#gradient0)"/>
+                            <path d="M16 8V24M8 16H24" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                            <defs>
+                                <linearGradient id="gradient0" x1="0" y1="0" x2="32" y2="32">
+                                    <stop stop-color="#8B5CF6"/>
+                                    <stop offset="1" stop-color="#3B82F6"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <h1>FinanceTracker</h1>
+                    <p>Secure personal finance management with real-time sync</p>
+                </div>
+                
+                <div class="auth-content">
+                    <button id="signInBtn" class="auth-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+                    
+                    <div class="sync-indicator" id="syncStatus">
+                        <div class="sync-dot"></div>
+                        <span>Connecting...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Dashboard Screen -->
-        <div id="dashboard" class="screen active">
+        <div id="dashboard" class="screen">
             <header class="screen-header">
                 <h1>Welcome back!</h1>
-                <div class="profile-icon">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <div class="profile-icon" id="profileIcon">
+                    <img id="userAvatar" src="" alt="User" style="display: none;">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" id="defaultAvatar">
                         <circle cx="16" cy="16" r="16" fill="url(#userGradient)"/>
                         <path d="M16 16c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="white"/>
                         <defs>
@@ -36,15 +78,20 @@
             <div class="net-worth-card">
                 <div class="card-header">
                     <span>Total Net Worth</span>
-                    <button id="toggleBalance" class="toggle-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                    </button>
+                    <div class="card-actions">
+                        <button id="toggleBalance" class="toggle-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                        <div class="sync-indicator" id="balanceSync">
+                            <div class="sync-dot"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="balance-display">
-                    <span id="totalBalance" class="balance-amount">$570.56</span>
+                    <span id="totalBalance" class="balance-amount">$0.00</span>
                     <button id="currencySelector" class="currency-btn">USD</button>
                 </div>
             </div>
@@ -97,13 +144,9 @@
             <div class="recent-transactions">
                 <h3>Recent Transactions</h3>
                 <div id="transactionsList" class="transactions-list">
-                    <div class="empty-state">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M8 12h8"/>
-                        </svg>
-                        <p>No transactions yet</p>
-                        <span>Start tracking your finances by adding your first transaction</span>
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading transactions...</p>
                     </div>
                 </div>
             </div>
@@ -113,6 +156,9 @@
         <div id="accounts" class="screen">
             <header class="screen-header">
                 <h1>Accounts</h1>
+                <div class="sync-indicator" id="accountsSync">
+                    <div class="sync-dot"></div>
+                </div>
             </header>
 
             <div class="total-balance-card">
@@ -125,34 +171,13 @@
                         <option value="SEK">SEK</option>
                     </select>
                 </div>
-                <div class="balance-amount" id="totalAccountBalance">$570.56</div>
+                <div class="balance-amount" id="totalAccountBalance">$0.00</div>
             </div>
 
             <div class="accounts-list" id="accountsList">
-                <div class="account-card">
-                    <div class="account-info">
-                        <div class="account-icon bank">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 21h18"/>
-                                <path d="M5 21V7l8-4v18"/>
-                                <path d="M19 21V11l-6-4"/>
-                            </svg>
-                        </div>
-                        <div class="account-details">
-                            <div class="account-name">Spärbanken</div>
-                            <div class="account-meta">Bank • ****45-2</div>
-                        </div>
-                    </div>
-                    <div class="account-balance">
-                        <div class="primary-balance">kr6,202.00</div>
-                        <div class="converted-balance">≈ $570.56</div>
-                        <button class="add-money-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="5" x2="12" y2="19"/>
-                                <line x1="5" y1="12" x2="19" y2="12"/>
-                            </svg>
-                        </button>
-                    </div>
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading accounts...</p>
                 </div>
             </div>
 
@@ -193,13 +218,9 @@
             <div class="spending-breakdown">
                 <h3>Spending by Category</h3>
                 <div id="spendingChart" class="chart-container">
-                    <div class="empty-state">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c.34 0 .68.02 1.01.07"/>
-                            <path d="M16 2v6h6"/>
-                        </svg>
-                        <p>No expenses yet</p>
-                        <span>Start tracking to see your spending breakdown</span>
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading analytics...</p>
                     </div>
                 </div>
             </div>
@@ -212,6 +233,17 @@
             </header>
 
             <div class="settings-sections">
+                <div class="settings-section">
+                    <h3>Account</h3>
+                    <div class="setting-item" id="userProfile">
+                        <div class="setting-info">
+                            <span id="userEmail">Loading...</span>
+                            <small>Signed in with Google</small>
+                        </div>
+                        <button class="btn btn--outline" id="signOutBtn">Sign Out</button>
+                    </div>
+                </div>
+
                 <div class="settings-section">
                     <h3>Preferences</h3>
                     <div class="setting-item">
@@ -229,62 +261,28 @@
                         <span id="fxLastUpdateText">Rates updated: --</span>
                         <button id="refreshFxBtn" class="btn btn--secondary">Refresh Exchange Rates</button>
                     </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <span>Categories</span>
-                            <small>Manage transaction categories</small>
-                        </div>
-                        <button class="setting-control">Manage</button>
-                    </div>
                 </div>
 
                 <div class="settings-section">
-                    <h3>Notifications</h3>
+                    <h3>Data Sync</h3>
                     <div class="setting-item">
                         <div class="setting-info">
-                            <span>Budget Alerts</span>
-                            <small>Get notified when approaching budget limits</small>
+                            <span>Real-time Updates</span>
+                            <small>Sync changes across all devices</small>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" checked>
+                            <input type="checkbox" id="realtimeToggle" checked>
                             <span class="slider"></span>
                         </label>
                     </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Security</h3>
                     <div class="setting-item">
                         <div class="setting-info">
-                            <span>Biometric Lock</span>
-                            <small>Use fingerprint or face ID to secure app</small>
+                            <span>Offline Mode</span>
+                            <small id="offlineStatus">Connected</small>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" disabled>
-                            <span class="slider disabled"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Support</h3>
-                    <div class="setting-item clickable">
-                        <div class="setting-info">
-                            <span>Help & Support</span>
-                            <small>Get help and contact support</small>
+                        <div class="sync-indicator" id="connectionStatus">
+                            <div class="sync-dot"></div>
                         </div>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="9,18 15,12 9,6"/>
-                        </svg>
-                    </div>
-                    <div class="setting-item clickable">
-                        <div class="setting-info">
-                            <span>About</span>
-                            <small>Version 1.0.0</small>
-                        </div>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="9,18 15,12 9,6"/>
-                        </svg>
                     </div>
                 </div>
             </div>
@@ -327,7 +325,7 @@
     <div id="addAccountModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Add Account</h2>
+                <h2 id="accountModalTitle">Add Account</h2>
                 <button class="close-btn" data-modal="addAccountModal">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -376,17 +374,23 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn--secondary" data-modal="addAccountModal">Cancel</button>
-                    <button type="submit" class="btn btn--primary">Add Account</button>
+                    <button type="submit" class="btn btn--primary" id="saveAccountBtn">
+                        <span class="btn-text">Add Account</span>
+                        <div class="btn-loading hidden">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </button>
+                    <button type="button" class="btn btn--outline hidden" id="deleteAccountBtn">Delete Account</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Enhanced Add Transaction Modal -->
+    <!-- Add Transaction Modal -->
     <div id="addTransactionModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Add Transaction</h2>
+                <h2 id="transactionModalTitle">Add Transaction</h2>
                 <button class="close-btn" data-modal="addTransactionModal">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -440,7 +444,13 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn--secondary" data-modal="addTransactionModal">Cancel</button>
-                    <button type="submit" class="btn btn--primary" id="submitTransactionBtn">Add Transaction</button>
+                    <button type="submit" class="btn btn--primary" id="submitTransactionBtn">
+                        <span class="btn-text">Add Transaction</span>
+                        <div class="btn-loading hidden">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </button>
+                    <button type="button" class="btn btn--outline hidden" id="deleteTransactionBtn">Delete Transaction</button>
                 </div>
             </form>
         </div>
@@ -460,6 +470,22 @@
             </div>
             <div class="currency-list" id="currencyList">
                 <!-- Currency options will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="confirmTitle">Confirm Action</h2>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Are you sure you want to perform this action?</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn--secondary" id="confirmCancel">Cancel</button>
+                <button type="button" class="btn btn--primary" id="confirmOk">Confirm</button>
             </div>
         </div>
     </div>
