@@ -3,285 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinanceTracker - Personal Finance App</title>
-    <meta name="description" content="Modern personal finance tracking app with multi-currency support">
+    <title>FinanceTracker - Smart Personal Finance Management</title>
+    <meta name="description" content="Smart personal finance management with real-time currency conversion and secure cloud sync">
     <meta name="theme-color" content="#8B5CF6">
-    <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0idXJsKCNncmFkaWVudDApIi8+CjxwYXRoIGQ9Ik0xNiA4VjI0TTggMTZIMjQiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50MCIgeDE9IjAiIHkxPSIwIiB4Mj0iMzIiIHkyPSIzMiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgo8c3RvcCBzdG9wLWNvbG9yPSIjOEI1Q0Y2Ii8+CjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzNCODJGNiIvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+Cjwvc3ZnPgo=">
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkZpbmFuY2VUcmFja2VyIiwKICAic2hvcnRfbmFtZSI6ICJGaW5hbmNlVHJhY2tlciIsCiAgImRlc2NyaXB0aW9uIjogIk1vZGVybiBwZXJzb25hbCBmaW5hbmNlIHRyYWNraW5nIGFwcCIsCiAgInN0YXJ0X3VybCI6ICIvIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjRkZGRkZGIiwKICAidGhlbWVfY29sb3IiOiAiIzhCNUNGNiIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImRhdGE6aW1hZ2Uvc3ZnK3htbDtiYXNlNjQsUEhOMlp5QjNhV1IwYUQwaU1qRXlJaUJvWldsbmFIUTlJakV5TWlJZ2RtbGxkMEp2ZUQwaU1DQXdJREV5TWlBeE1qSWlJR1pwYkd3OUltNXZibVVpSUhodGJHNXpQU0pvZEhSd09pOHZkM2QzTG5rekxtOXlaeTh5TURBd0wzTjJaeUkrQ2p4eVpXTjBJSGRwWkhSb1BTSnhNakluSWlCb1pXbG5hSFE5SWpFeU1pSWdjbmc5SWpnaUlHWnBiR3c5SW5WeWJDaGpaeUFuWlhGNE1YSW5LU0NJL1BnbzhaR0psY2p3OGJHbHVaV0Z5UjNKaFpHbGxiblFnYVdROUltZHlZV1JwWlc1ME1DSWdlREU5SWpBaUlIa3hPU0l3SWlCNE1qb3lJaUo1TWpveU1qa2lJR2R5WVdScFpXNTBWVzVwZEhNOUluVnpaWEpUY0dGalpVOXVWWE5sSWpvOWMzUnZjQ0J6ZEc5d0xXTnZiRzl5UFNJak9FSTFRMFkyUWlVdENqeHpkRzl3SUc5bVpuTmxkRDBpTVNJZ2MzUnZjQzFqYjJ4dmNqMGlJek5DT0RKR05pSXZQZ282UEM5a1pXWnpQajQ4TDJSbFpuTStQZ284TDNOMlp6ND0iLAogICAgICAic2l6ZXMiOiAiMTIyeDEyMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiCiAgICB9CiAgXQp9">
+    <link rel="icon" href="favicon.ico">
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
-    <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- dayjs for relative time formatting -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
 </head>
 <body>
-    <div class="app">
-        <!-- Authentication Screen -->
-        <div id="auth" class="screen auth-screen active">
-            <div class="auth-container">
-                <div class="auth-header">
-                    <div class="app-logo">
-                        <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
-                            <rect width="32" height="32" rx="8" fill="url(#gradient0)"/>
-                            <path d="M16 8V24M8 16H24" stroke="white" stroke-width="3" stroke-linecap="round"/>
-                            <defs>
-                                <linearGradient id="gradient0" x1="0" y1="0" x2="32" y2="32">
-                                    <stop stop-color="#8B5CF6"/>
-                                    <stop offset="1" stop-color="#3B82F6"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </div>
-                    <h1>FinanceTracker</h1>
-                    <p>Secure personal finance management with real-time sync</p>
-                </div>
-                
-                <div class="auth-content">
-                    <button id="signInBtn" class="auth-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                        </svg>
-                        Continue with Google
-                    </button>
-                    
-                    <div class="sync-indicator" id="syncStatus">
-                        <div class="sync-dot"></div>
-                        <span>Connecting...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dashboard Screen -->
-        <div id="dashboard" class="screen">
-            <header class="screen-header">
-                <h1>Welcome back!</h1>
-                <div class="profile-icon" id="profileIcon">
-                    <img id="userAvatar" src="" alt="User" style="display: none;">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" id="defaultAvatar">
-                        <circle cx="16" cy="16" r="16" fill="url(#userGradient)"/>
-                        <path d="M16 16c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="white"/>
+    <!-- Authentication Screen -->
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-container">
+            <div class="auth-content">
+                <div class="app-logo">
+                    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                        <rect width="64" height="64" rx="16" fill="url(#gradient)" />
+                        <path d="M20 26h24M20 32h18M20 38h12" stroke="white" stroke-width="3" stroke-linecap="round" />
+                        <circle cx="44" cy="20" r="4" fill="white" />
                         <defs>
-                            <linearGradient id="userGradient" x1="0" y1="0" x2="32" y2="32">
-                                <stop stop-color="#8B5CF6"/>
-                                <stop offset="1" stop-color="#3B82F6"/>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#8B5CF6" />
+                                <stop offset="100%" stop-color="#3B82F6" />
                             </linearGradient>
                         </defs>
                     </svg>
                 </div>
-            </header>
 
-            <div class="net-worth-card">
-                <div class="card-header">
-                    <span>Total Net Worth</span>
-                    <div class="card-actions">
-                        <button id="toggleBalance" class="toggle-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                            </svg>
+                <h1 class="auth-title">FinanceTracker</h1>
+                <p class="auth-subtitle">Smart personal finance management</p>
+
+                <div class="features-list">
+                    <div class="feature-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <span>Track expenses across multiple accounts</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        <span>Real-time currency conversion</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"/>
+                            <path d="M18 17l-5-5-5 5-3-3"/>
+                        </svg>
+                        <span>Beautiful analytics and insights</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5"/>
+                        </svg>
+                        <span>Secure cloud sync across devices</span>
+                    </div>
+                </div>
+
+                <button id="google-signin-btn" class="google-signin-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span id="signin-text">Continue with Google</span>
+                </button>
+
+                <div id="auth-error" class="auth-error" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Screen -->
+    <div id="app-screen" class="app-screen" style="display: none;">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <h1 class="app-title">FinanceTracker</h1>
+            <div class="user-profile">
+                <img id="user-avatar" src="" alt="Profile" class="user-avatar">
+                <span id="user-name" class="user-name"></span>
+            </div>
+        </div>
+
+        <!-- Screen Content -->
+        <div class="screen-content">
+            <!-- Dashboard Screen -->
+            <div id="dashboard-screen" class="screen">
+                <div class="welcome-section">
+                    <h2 id="welcome-message">Welcome back!</h2>
+                    <p class="welcome-subtitle">Here's your financial overview</p>
+                </div>
+
+                <div class="balance-card">
+                    <div class="balance-header">
+                        <span>Total Net Worth</span>
+                        <button id="balance-toggle" class="balance-toggle">👁️</button>
+                    </div>
+                    <div class="balance-amount">
+                        <span id="total-balance">$0.00</span>
+                        <div class="balance-accounts">
+                            <span id="accounts-count">0 accounts</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-cards">
+                    <div class="summary-card income">
+                        <div class="summary-icon">↗</div>
+                        <div class="summary-details">
+                            <span class="summary-label">Income</span>
+                            <span class="summary-amount" id="monthly-income">$0.00</span>
+                            <span class="summary-period">This month</span>
+                        </div>
+                    </div>
+                    <div class="summary-card expense">
+                        <div class="summary-icon">↘</div>
+                        <div class="summary-details">
+                            <span class="summary-label">Expenses</span>
+                            <span class="summary-amount" id="monthly-expenses">$0.00</span>
+                            <span class="summary-period">This month</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <h3>Quick Actions</h3>
+                    <div class="action-buttons">
+                        <button class="action-btn primary" id="add-transaction-btn">
+                            <span class="action-icon">+</span>
+                            <span>Add Transaction</span>
                         </button>
-                        <div class="sync-indicator" id="balanceSync">
-                            <div class="sync-dot"></div>
+                        <button class="action-btn secondary" id="add-account-btn">
+                            <span class="action-icon">+</span>
+                            <span>Add Account</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="recent-transactions">
+                    <h3>Recent Transactions</h3>
+                    <div id="recent-transactions-list" class="transactions-list">
+                        <div class="empty-state">
+                            <p>No transactions yet</p>
+                            <p>Start by adding your first transaction</p>
                         </div>
                     </div>
                 </div>
-                <div class="balance-display">
-                    <span id="totalBalance" class="balance-amount">$0.00</span>
-                    <button id="currencySelector" class="currency-btn">USD</button>
-                </div>
             </div>
 
-            <div class="summary-cards">
-                <div class="summary-card income">
-                    <div class="card-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="1" x2="12" y2="23"/>
-                            <path d="l7-7 5 5 5-5"/>
-                        </svg>
-                    </div>
-                    <div class="card-content">
-                        <span class="card-label">This Month Income</span>
-                        <span class="card-amount income-amount">$0.00</span>
-                    </div>
-                </div>
-                <div class="summary-card expense">
-                    <div class="card-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="23" x2="12" y2="1"/>
-                            <path d="l-7 7 5-5 5 5"/>
-                        </svg>
-                    </div>
-                    <div class="card-content">
-                        <span class="card-label">This Month Expenses</span>
-                        <span class="card-amount expense-amount">$0.00</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="quick-actions">
-                <button class="action-btn primary" id="addTransactionBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    Add Transaction
-                </button>
-                <button class="action-btn secondary" id="addAccountBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
-                    </svg>
-                    Add Account
-                </button>
-            </div>
-
-            <div class="recent-transactions">
-                <h3>Recent Transactions</h3>
-                <div id="transactionsList" class="transactions-list">
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p>Loading transactions...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Accounts Screen -->
-        <div id="accounts" class="screen">
-            <header class="screen-header">
-                <h1>Accounts</h1>
-                <div class="sync-indicator" id="accountsSync">
-                    <div class="sync-dot"></div>
-                </div>
-            </header>
-
-            <div class="total-balance-card">
-                <div class="card-header">
-                    <span>Total Balance</span>
-                    <select id="displayCurrency" class="currency-select">
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                        <option value="SEK">SEK</option>
-                    </select>
-                </div>
-                <div class="balance-amount" id="totalAccountBalance">$0.00</div>
-            </div>
-
-            <div class="accounts-list" id="accountsList">
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading accounts...</p>
-                </div>
-            </div>
-
-            <button class="fab" id="addAccountFab">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-            </button>
-        </div>
-
-        <!-- Analytics Screen -->
-        <div id="analytics" class="screen">
-            <header class="screen-header">
-                <h1>Analytics</h1>
-            </header>
-
-            <div class="analytics-summary">
-                <div class="analytics-card">
-                    <div class="card-header">
-                        <span>Monthly Summary</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Income:</span>
-                        <span class="income-amount">$0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Expenses:</span>
-                        <span class="expense-amount">$0.00</span>
-                    </div>
-                    <div class="summary-row total">
-                        <span>Savings Rate:</span>
-                        <span class="savings-rate">0%</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="spending-breakdown">
-                <h3>Spending by Category</h3>
-                <div id="spendingChart" class="chart-container">
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p>Loading analytics...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Screen -->
-        <div id="settings" class="screen">
-            <header class="screen-header">
-                <h1>Settings</h1>
-            </header>
-
-            <div class="settings-sections">
-                <div class="settings-section">
-                    <h3>Account</h3>
-                    <div class="setting-item" id="userProfile">
-                        <div class="setting-info">
-                            <span id="userEmail">Loading...</span>
-                            <small>Signed in with Google</small>
-                        </div>
-                        <button class="btn btn--outline" id="signOutBtn">Sign Out</button>
-                    </div>
+            <!-- Accounts Screen -->
+            <div id="accounts-screen" class="screen" style="display: none;">
+                <div class="screen-header">
+                    <h2>Accounts</h2>
+                    <p>Manage your finances</p>
                 </div>
 
-                <div class="settings-section">
-                    <h3>Preferences</h3>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <span>Currency</span>
-                            <small>Default display currency</small>
-                        </div>
-                        <select class="setting-control" id="settingsCurrencySelect">
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="EUR">EUR - Euro</option>
-                            <option value="SEK">SEK - Swedish Krona</option>
+                <div class="balance-card">
+                    <div class="balance-header">
+                        <span>Total Balance</span>
+                        <select id="display-currency" class="currency-selector">
+                            <option value="USD">USD</option>
                         </select>
                     </div>
-                    <div class="fx-update-row">
-                        <span id="fxLastUpdateText">Rates updated: --</span>
-                        <button id="refreshFxBtn" class="btn btn--secondary">Refresh Exchange Rates</button>
+                    <div class="balance-amount">
+                        <span id="accounts-total-balance">$0.00</span>
+                        <div class="balance-accounts">
+                            <span id="accounts-total-count">Across 0 accounts</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="settings-section">
-                    <h3>Data Sync</h3>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <span>Real-time Updates</span>
-                            <small>Sync changes across all devices</small>
+                <div class="accounts-section">
+                    <h3>Your Accounts</h3>
+                    <div id="accounts-list" class="accounts-list">
+                        <div class="empty-state">
+                            <p>No accounts yet</p>
+                            <p>Add an account to start tracking</p>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="realtimeToggle" checked>
-                            <span class="slider"></span>
-                        </label>
                     </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <span>Offline Mode</span>
-                            <small id="offlineStatus">Connected</small>
+                </div>
+
+                <button id="add-account-fab" class="fab">+</button>
+            </div>
+
+            <!-- Analytics Screen -->
+            <div id="analytics-screen" class="screen" style="display: none;">
+                <div class="screen-header">
+                    <h2>Analytics</h2>
+                    <p>Your spending insights</p>
+                </div>
+
+                <div class="analytics-cards">
+                    <div class="analytics-card">
+                        <span class="analytics-label">This Month</span>
+                        <span class="analytics-amount income" id="analytics-income">$0.00</span>
+                        <span class="analytics-sublabel">Income</span>
+                    </div>
+                    <div class="analytics-card">
+                        <span class="analytics-label">This Month</span>
+                        <span class="analytics-amount expense" id="analytics-expenses">$0.00</span>
+                        <span class="analytics-sublabel">Expenses</span>
+                    </div>
+                    <div class="analytics-card">
+                        <span class="analytics-label">Savings Rate</span>
+                        <span class="analytics-amount" id="savings-rate">0.0%</span>
+                        <span class="analytics-sublabel">Great job!</span>
+                    </div>
+                </div>
+
+                <div class="spending-by-category">
+                    <h3>Spending by Category</h3>
+                    <div id="category-breakdown" class="category-breakdown">
+                        <div class="empty-state">
+                            <p>No expenses yet</p>
+                            <p>Start tracking to see your spending breakdown</p>
                         </div>
-                        <div class="sync-indicator" id="connectionStatus">
-                            <div class="sync-dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Screen -->
+            <div id="settings-screen" class="screen" style="display: none;">
+                <div class="screen-header">
+                    <h2>Settings</h2>
+                    <p>Customize your experience</p>
+                </div>
+
+                <div class="settings-sections">
+                    <div class="settings-section">
+                        <h3>Preferences</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Currency</span>
+                                <span class="setting-value" id="current-currency">USD</span>
+                            </div>
+                            <button class="setting-action">Change</button>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Categories</span>
+                                <span class="setting-value">Manage</span>
+                            </div>
+                            <button class="setting-action">Configure</button>
+                        </div>
+                        <div class="fx-update-section">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <span class="setting-label">Exchange Rates</span>
+                                    <span class="setting-value" id="fx-last-update">Never updated</span>
+                                </div>
+                                <button id="refresh-fx-btn" class="setting-action">Refresh</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Notifications</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Budget Alerts</span>
+                                <span class="setting-value">On</span>
+                            </div>
+                            <button class="setting-action">Toggle</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Security</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Biometric Lock</span>
+                                <span class="setting-value">Off</span>
+                            </div>
+                            <button class="setting-action">Enable</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Account</h3>
+                        <div class="user-info">
+                            <img id="settings-user-avatar" src="" alt="Profile" class="settings-avatar">
+                            <div class="user-details">
+                                <span id="settings-user-name" class="user-name-text"></span>
+                                <span id="settings-user-email" class="user-email-text"></span>
+                            </div>
+                        </div>
+                        <button id="sign-out-btn" class="sign-out-btn">Sign Out</button>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Support</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Help & Support</span>
+                            </div>
+                            <button class="setting-action">Contact</button>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">About</span>
+                                <span class="setting-value">v1.0.0</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -289,205 +317,52 @@
         </div>
 
         <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <button class="nav-btn active" data-screen="dashboard">
+        <div class="bottom-nav">
+            <button class="nav-item active" data-screen="dashboard">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     <polyline points="9,22 9,12 15,12 15,22"/>
                 </svg>
                 <span>Dashboard</span>
             </button>
-            <button class="nav-btn" data-screen="accounts">
+            <button class="nav-item" data-screen="accounts">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                    <line x1="1" y1="10" x2="23" y2="10"/>
+                    <path d="M21 12c0 1.66-4.03 3-9 3s-9-1.34-9-3"/>
+                    <path d="M3 5c0-1.66 4.03-3 9-3s9 1.34 9 3"/>
+                    <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
                 </svg>
                 <span>Accounts</span>
             </button>
-            <button class="nav-btn" data-screen="analytics">
+            <button class="nav-item" data-screen="analytics">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c.34 0 .68.02 1.01.07"/>
-                    <path d="M16 2v6h6"/>
+                    <path d="M3 3v18h18"/>
+                    <path d="M18 17l-5-5-5 5-3-3"/>
                 </svg>
                 <span>Analytics</span>
             </button>
-            <button class="nav-btn" data-screen="settings">
+            <button class="nav-item" data-screen="settings">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
                 <span>Settings</span>
             </button>
-        </nav>
-    </div>
-
-    <!-- Add Account Modal -->
-    <div id="addAccountModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="accountModalTitle">Add Account</h2>
-                <button class="close-btn" data-modal="addAccountModal">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <form class="modal-form" id="addAccountForm">
-                <div class="form-group">
-                    <label class="form-label">Account Name</label>
-                    <input type="text" class="form-control" name="accountName" placeholder="e.g., Main Checking" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Account Type</label>
-                    <select class="form-control" name="accountType" required>
-                        <option value="">Select type</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Card">Card</option>
-                        <option value="Bank">Bank</option>
-                        <option value="Wallet">Wallet</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Initial Balance</label>
-                    <input type="number" class="form-control" name="initialBalance" placeholder="0.00" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Currency</label>
-                    <select class="form-control" name="currency" required>
-                        <option value="USD">USD - US Dollar</option>
-                        <option value="EUR">EUR - Euro</option>
-                        <option value="GBP">GBP - British Pound</option>
-                        <option value="SEK">SEK - Swedish Krona</option>
-                        <option value="JPY">JPY - Japanese Yen</option>
-                        <option value="CAD">CAD - Canadian Dollar</option>
-                        <option value="AUD">AUD - Australian Dollar</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Bank Name (Optional)</label>
-                    <input type="text" class="form-control" name="bankName" placeholder="e.g., Chase Bank">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Account Number (Optional)</label>
-                    <input type="text" class="form-control" name="accountNumber" placeholder="e.g., ****1234">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn--secondary" data-modal="addAccountModal">Cancel</button>
-                    <button type="submit" class="btn btn--primary" id="saveAccountBtn">
-                        <span class="btn-text">Add Account</span>
-                        <div class="btn-loading hidden">
-                            <div class="loading-spinner"></div>
-                        </div>
-                    </button>
-                    <button type="button" class="btn btn--outline hidden" id="deleteAccountBtn">Delete Account</button>
-                </div>
-            </form>
         </div>
     </div>
 
-    <!-- Add Transaction Modal -->
-    <div id="addTransactionModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="transactionModalTitle">Add Transaction</h2>
-                <button class="close-btn" data-modal="addTransactionModal">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <form class="modal-form" id="addTransactionForm">
-                <div class="form-group">
-                    <label class="form-label">Transaction Type</label>
-                    <select class="form-control" name="type" id="transactionType" required>
-                        <option value="expense">Expense</option>
-                        <option value="income">Income</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Select Account</label>
-                    <select class="form-control" name="accountId" id="accountSelect" required>
-                        <option value="">Choose account...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Amount</label>
-                    <input type="number" class="form-control" name="amount" id="transactionAmount" placeholder="0.00" step="0.01" required>
-                    <div class="validation-message" id="balanceWarning"></div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-control" name="description" placeholder="e.g., Grocery shopping" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <select class="form-control" name="category" required>
-                        <option value="">Select category</option>
-                        <option value="Food & Dining">Food & Dining</option>
-                        <option value="Transportation">Transportation</option>
-                        <option value="Shopping">Shopping</option>
-                        <option value="Bills & Utilities">Bills & Utilities</option>
-                        <option value="Entertainment">Entertainment</option>
-                        <option value="Health & Fitness">Health & Fitness</option>
-                        <option value="Education">Education</option>
-                        <option value="Salary">Salary</option>
-                        <option value="Freelance">Freelance</option>
-                        <option value="Investment">Investment</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Date</label>
-                    <input type="date" class="form-control" name="date" id="transactionDate" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn--secondary" data-modal="addTransactionModal">Cancel</button>
-                    <button type="submit" class="btn btn--primary" id="submitTransactionBtn">
-                        <span class="btn-text">Add Transaction</span>
-                        <div class="btn-loading hidden">
-                            <div class="loading-spinner"></div>
-                        </div>
-                    </button>
-                    <button type="button" class="btn btn--outline hidden" id="deleteTransactionBtn">Delete Transaction</button>
-                </div>
-            </form>
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <div id="modal-content" class="modal-content">
+            <!-- Modal content will be dynamically inserted here -->
         </div>
     </div>
 
-    <!-- Currency Selector Modal -->
-    <div id="currencySelectorModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Select Currency</h2>
-                <button class="close-btn" data-modal="currencySelectorModal">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="currency-list" id="currencyList">
-                <!-- Currency options will be populated by JavaScript -->
-            </div>
-        </div>
-    </div>
+    <!-- Toast notifications -->
+    <div id="toast-container" class="toast-container"></div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="confirmTitle">Confirm Action</h2>
-            </div>
-            <div class="modal-body">
-                <p id="confirmMessage">Are you sure you want to perform this action?</p>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn--secondary" id="confirmCancel">Cancel</button>
-                <button type="button" class="btn btn--primary" id="confirmOk">Confirm</button>
-            </div>
-        </div>
+    <!-- Loading spinner -->
+    <div id="loading-spinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
     </div>
 
     <script src="app.js"></script>
