@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AccountType, TransactionCategory, TransactionType } from '@/types';
+import type { TransactionCategory, TransactionType } from '@/types';
 
 /**
  * Account validation schema

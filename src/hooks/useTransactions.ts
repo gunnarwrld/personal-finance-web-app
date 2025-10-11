@@ -136,9 +136,18 @@ export function useTransactions(
         ? -oldTransaction.amount 
         : oldTransaction.amount;
 
+      // Get current account balance
+      const { data: oldAccount, error: oldAccountError } = await supabase
+        .from('accounts')
+        .select('balance')
+        .eq('id', oldTransaction.account_id)
+        .single();
+
+      if (oldAccountError) throw oldAccountError;
+
       const { error: revertError } = await supabase
         .from('accounts')
-        .update({ balance: supabase.rpc('increment', { x: oldBalanceChange }) })
+        .update({ balance: oldAccount.balance + oldBalanceChange })
         .eq('id', oldTransaction.account_id);
 
       if (revertError) throw revertError;
@@ -160,9 +169,18 @@ export function useTransactions(
         ? newTransaction.amount
         : -newTransaction.amount;
 
+      // Get current account balance for new account
+      const { data: newAccount, error: newAccountError } = await supabase
+        .from('accounts')
+        .select('balance')
+        .eq('id', newTransaction.account_id)
+        .single();
+
+      if (newAccountError) throw newAccountError;
+
       const { error: updateError } = await supabase
         .from('accounts')
-        .update({ balance: supabase.rpc('increment', { x: newBalanceChange }) })
+        .update({ balance: newAccount.balance + newBalanceChange })
         .eq('id', newTransaction.account_id);
 
       if (updateError) throw updateError;
@@ -185,9 +203,18 @@ export function useTransactions(
         ? -transaction.amount
         : transaction.amount;
 
+      // Get current account balance
+      const { data: account, error: accountError } = await supabase
+        .from('accounts')
+        .select('balance')
+        .eq('id', transaction.account_id)
+        .single();
+
+      if (accountError) throw accountError;
+
       const { error: balanceError } = await supabase
         .from('accounts')
-        .update({ balance: supabase.rpc('increment', { x: balanceChange }) })
+        .update({ balance: account.balance + balanceChange })
         .eq('id', transaction.account_id);
 
       if (balanceError) throw balanceError;

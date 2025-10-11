@@ -1,3 +1,7 @@
+import type { Transaction, InsertTransaction, UpdateTransaction } from './transaction';
+import type { UserPreferences, InsertUserPreferences, UpdateUserPreferences } from './user';
+import type { CurrencyRates, InsertCurrencyRates, UpdateCurrencyRates } from './currency';
+
 // Database types
 export interface Database {
   public: {
