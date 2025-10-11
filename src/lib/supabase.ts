@@ -31,10 +31,18 @@ export const signOut = async () => {
 
 // Helper to sign in with Google
 export const signInWithGoogle = async () => {
+  // Use localhost for development, production URL for deployed version
+  const isDevelopment = window.location.hostname === 'localhost';
+  const redirectUrl = isDevelopment 
+    ? `http://localhost:${window.location.port}/dashboard`
+    : `${window.location.origin}/dashboard`;
+  
+  console.log('Signing in with redirect to:', redirectUrl);
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin,
+      redirectTo: redirectUrl,
     },
   });
   if (error) throw error;
