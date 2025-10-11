@@ -2,7 +2,7 @@
 
 > Modern, type-safe personal finance management application
 
-## 🎯 Tech Stack
+## Tech Stack
 
 - **Frontend**: React 18 + TypeScript
 - **Styling**: Tailwind CSS
@@ -15,7 +15,7 @@
 - **Validation**: Zod
 - **Icons**: Lucide React
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -47,7 +47,7 @@ npm run type-check   # Run TypeScript checks
 npm run lint         # Run ESLint
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -68,9 +68,9 @@ src/
 └── index.css        # Global styles
 ```
 
-## 🎨 Features
+## Features
 
-### ✅ Implemented
+### Implemented
 
 - Full TypeScript type safety
 - Google OAuth authentication
@@ -82,7 +82,7 @@ src/
 - PWA support with offline capability
 - Dark mode ready
 
-### 🚧 In Progress
+### In Progress
 
 - UI components (Button, Card, Modal, etc.)
 - Page components (Dashboard, Accounts, etc.)
@@ -90,7 +90,7 @@ src/
 - Transaction pagination
 - Search and filters
 
-## 🔐 Environment Variables
+## Environment Variables
 
 Required environment variables (in `.env`):
 
@@ -100,7 +100,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_CURRENCY_API_URL=https://api.exchangerate.host/latest
 ```
 
-## 🗄️ Database
+## Database
 
 The app uses your existing Supabase database with the following tables:
 
@@ -111,7 +111,7 @@ The app uses your existing Supabase database with the following tables:
 
 No data migration needed! The new app works with existing data.
 
-## 📱 PWA Configuration
+## PWA Configuration
 
 The app is configured as a Progressive Web App with:
 
@@ -120,14 +120,14 @@ The app is configured as a Progressive Web App with:
 - Caching strategies for optimal performance
 - Background sync for offline transactions
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Coming soon: Testing setup
 npm run test
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Build for Production
 
@@ -155,15 +155,15 @@ Set these in your hosting platform:
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_CURRENCY_API_URL` (optional)
 
-## 🤝 Contributing
+## Contributing
 
 This is a personal project, but suggestions are welcome!
 
-## 📄 License
+## License
 
 Private project - All rights reserved
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Supabase for backend infrastructure
 - Vercel for Vite
@@ -172,4 +172,4 @@ Private project - All rights reserved
 
 ---
 
-**Built with ❤️ using React + TypeScript**
+**Built using React + TypeScript**

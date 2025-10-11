@@ -8,11 +8,23 @@ import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 
 export const SettingsPage: React.FC = () => {
   const { user, signOut } = useAuth();
-  const { isRefreshing, refreshRates } = useCurrency();
-  const { preferences, updatePreferences, isUpdating } = useUserPreferences();
+  const { isRefreshing, refreshRatesAsync } = useCurrency();
+  const { preferences, updatePreferencesAsync, isUpdating } = useUserPreferences();
 
   const handleCurrencyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    await updatePreferences({ display_currency: e.target.value });
+    try {
+      await updatePreferencesAsync({ display_currency: e.target.value });
+    } catch (error) {
+      console.error('Failed to update currency:', error);
+    }
+  };
+
+  const handleRefreshRates = async () => {
+    try {
+      await refreshRatesAsync();
+    } catch (error) {
+      console.error('Failed to refresh rates:', error);
+    }
   };
 
   const currencyOptions = SUPPORTED_CURRENCIES.map((currency) => ({
@@ -86,7 +98,7 @@ export const SettingsPage: React.FC = () => {
             {/* Refresh Exchange Rates */}
             <div>
               <Button
-                onClick={() => refreshRates()}
+                onClick={handleRefreshRates}
                 isLoading={isRefreshing}
                 leftIcon={<RefreshCw className="h-4 w-4" />}
                 variant="outline"
