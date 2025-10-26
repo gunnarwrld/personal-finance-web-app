@@ -5,15 +5,20 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { AccountsPage } from '@/pages/AccountsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { BudgetsPage } from '@/pages/BudgetsPage';
+import { BillsPage } from '@/pages/BillsPage';
+import { RecurringPage } from '@/pages/RecurringPage';
 import { Layout } from '@/components/layout/Layout';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { QuickTransactionFAB } from '@/components/quick';
 
 function App() {
   return (
     <BrowserRouter>
       <AppRoutes />
       <ToastContainer />
+      <QuickTransactionFAB />
     </BrowserRouter>
   );
 }
@@ -33,6 +38,9 @@ function AppRoutes() {
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/budgets" element={<BudgetsPage />} />
+          <Route path="/bills" element={<BillsPage />} />
+          <Route path="/recurring" element={<RecurringPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
