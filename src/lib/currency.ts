@@ -1,4 +1,4 @@
-import type { Currency, ExchangeRateResponse } from '@/types';
+import type { Currency } from '@/types';
 
 // Supported currencies
 export const CURRENCIES: Currency[] = [
@@ -28,24 +28,33 @@ export const FALLBACK_RATES: Record<string, number> = {
 };
 
 /**
- * Fetch current exchange rates from external API
+ * Fetch current exchange rates from Frankfurter API (Free, no API key needed)
+ * Frankfurter uses EUR as base, so we'll convert to USD base
  */
 export const fetchExchangeRates = async (): Promise<Record<string, number>> => {
   try {
-    const apiUrl = import.meta.env.VITE_CURRENCY_API_URL || 'https://api.exchangerate.host/latest';
-    const response = await fetch(`${apiUrl}?base=USD`);
+    // Frankfurter API - completely free, open source, updated daily by ECB
+    const response = await fetch('https://api.frankfurter.app/latest?from=USD');
     
     if (!response.ok) {
-      throw new Error('Failed to fetch exchange rates');
+      throw new Error(`API responded with status: ${response.status}`);
     }
 
-    const data: ExchangeRateResponse = await response.json();
+    const data = await response.json();
     
-    if (data.success && data.rates) {
-      return data.rates;
+    // Frankfurter returns rates with USD as base, which is what we need
+    if (data.rates && typeof data.rates === 'object') {
+      // Add USD itself to the rates
+      const rates: Record<string, number> = {
+        USD: 1.0,
+        ...data.rates,
+      };
+      
+      console.log('Exchange rates updated successfully:', new Date(data.date).toLocaleDateString());
+      return rates;
     }
 
-    throw new Error('Invalid exchange rate response');
+    throw new Error('Invalid exchange rate response format');
   } catch (error) {
     console.error('Failed to fetch exchange rates, using fallback:', error);
     return FALLBACK_RATES;

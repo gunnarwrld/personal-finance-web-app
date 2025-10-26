@@ -33,6 +33,9 @@ export interface Database {
 // Account types
 export type AccountType = 'Cash' | 'Card' | 'Bank' | 'Wallet';
 
+// Enhanced account types
+export type EnhancedAccountType = 'checking' | 'savings' | 'investment' | 'credit_card' | 'loan' | 'cash';
+
 export interface Account {
   id: number;
   user_id: string;
@@ -44,6 +47,11 @@ export interface Account {
   account_number: string | null;
   account_holder: string | null;
   notes: string | null;
+  account_type: EnhancedAccountType;
+  credit_limit: number | null;
+  interest_rate: number | null;
+  apy: number | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +66,11 @@ export interface InsertAccount {
   account_number?: string | null;
   account_holder?: string | null;
   notes?: string | null;
+  account_type?: EnhancedAccountType;
+  credit_limit?: number | null;
+  interest_rate?: number | null;
+  apy?: number | null;
+  is_active?: boolean;
 }
 
 export interface UpdateAccount {
@@ -69,6 +82,11 @@ export interface UpdateAccount {
   account_number?: string | null;
   account_holder?: string | null;
   notes?: string | null;
+  account_type?: EnhancedAccountType;
+  credit_limit?: number | null;
+  interest_rate?: number | null;
+  apy?: number | null;
+  is_active?: boolean;
 }
 
 export interface CreateAccountInput {
