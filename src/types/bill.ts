@@ -67,4 +67,9 @@ export interface BillReminderWithStatus extends BillReminder {
   days_until_due: number;
   is_overdue: boolean;
   is_upcoming: boolean; // Due within reminder_days_before
+  account?: {
+    name: string;
+    type: string;
+    currency: string;
+  };
 }
