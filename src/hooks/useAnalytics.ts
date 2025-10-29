@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
+import { useCurrency } from './useCurrency';
 import type {
   AnalyticsPeriod,
   TimeSeriesData,
@@ -19,11 +20,26 @@ interface UseAnalyticsOptions {
   endDate?: Date;
   accountIds?: number[];
   categories?: string[];
+  displayCurrency?: string;
 }
 
 export function useAnalytics(options: UseAnalyticsOptions = {}) {
   const { user } = useAuth();
-  const { period = 'monthly', startDate, endDate, accountIds, categories } = options;
+  const { rates } = useCurrency();
+  const { period = 'monthly', startDate, endDate, accountIds, categories, displayCurrency } = options;
+
+  // Helper function to convert amount between currencies
+  const convertAmount = (amount: number, fromCurrency: string, toCurrency: string): number => {
+    if (fromCurrency === toCurrency) return amount;
+    
+    // Convert to USD first (base currency)
+    const amountInUSD = fromCurrency === 'USD' ? amount : amount / (rates[fromCurrency] || 1);
+    
+    // Convert from USD to target currency
+    const convertedAmount = toCurrency === 'USD' ? amountInUSD : amountInUSD * (rates[toCurrency] || 1);
+    
+    return convertedAmount;
+  };
 
   // Helper function to get date range based on period
   const getDateRange = (): { start: Date; end: Date } => {
@@ -59,15 +75,16 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
   // Fetch spending trends over time
   const { data: spendingTrends, isLoading: isLoadingTrends } = useQuery({
-    queryKey: [...ANALYTICS_QUERY_KEY, 'spending-trends', period, startDate, endDate, accountIds],
+    queryKey: [...ANALYTICS_QUERY_KEY, 'spending-trends', period, startDate, endDate, accountIds, displayCurrency],
     queryFn: async (): Promise<TimeSeriesData> => {
       if (!user) throw new Error('User not authenticated');
 
       const { start, end } = getDateRange();
 
+      // Fetch transactions with account info for currency
       let query = supabase
         .from('transactions')
-        .select('*')
+        .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('date', start.toISOString())
@@ -86,9 +103,9 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       if (error) throw error;
 
-      // Group transactions by period
+      // Group transactions by period with currency conversion
       const groupedData: Record<string, number> = {};
-      data.forEach((tx) => {
+      for (const tx of data) {
         const date = new Date(tx.date);
         let key: string;
 
@@ -111,8 +128,14 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
             key = date.toISOString().split('T')[0];
         }
 
-        groupedData[key] = (groupedData[key] || 0) + tx.amount;
-      });
+        // Convert to display currency if specified
+        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
+          ? convertAmount(tx.amount, accountCurrency, displayCurrency)
+          : tx.amount;
+
+        groupedData[key] = (groupedData[key] || 0) + convertedAmount;
+      }
 
       const chartData: ChartDataPoint[] = Object.entries(groupedData)
         .map(([date, value]) => ({ date, value }))
@@ -137,7 +160,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
   // Fetch category breakdown
   const { data: categoryBreakdown, isLoading: isLoadingCategories } = useQuery({
-    queryKey: [...ANALYTICS_QUERY_KEY, 'category-breakdown', period, startDate, endDate, accountIds],
+    queryKey: [...ANALYTICS_QUERY_KEY, 'category-breakdown', period, startDate, endDate, accountIds, displayCurrency],
     queryFn: async (): Promise<CategorySpendingBreakdown[]> => {
       if (!user) throw new Error('User not authenticated');
 
@@ -145,7 +168,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       let query = supabase
         .from('transactions')
-        .select('*')
+        .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('date', start.toISOString())
@@ -159,19 +182,24 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       if (error) throw error;
 
-      // Group by category
+      // Group by category with currency conversion
       const categoryMap: Record<string, { amount: number; count: number }> = {};
       let total = 0;
 
-      data.forEach((tx) => {
+      for (const tx of data) {
         const category = tx.category || 'Uncategorized';
+        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
+          ? convertAmount(tx.amount, accountCurrency, displayCurrency)
+          : tx.amount;
+
         if (!categoryMap[category]) {
           categoryMap[category] = { amount: 0, count: 0 };
         }
-        categoryMap[category].amount += tx.amount;
+        categoryMap[category].amount += convertedAmount;
         categoryMap[category].count += 1;
-        total += tx.amount;
-      });
+        total += convertedAmount;
+      }
 
       // Convert to array and calculate percentages
       const breakdown: CategorySpendingBreakdown[] = Object.entries(categoryMap)
@@ -190,7 +218,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
   // Fetch income vs expenses
   const { data: incomeExpenseData, isLoading: isLoadingIncomeExpense } = useQuery({
-    queryKey: [...ANALYTICS_QUERY_KEY, 'income-expense', period, startDate, endDate, accountIds],
+    queryKey: [...ANALYTICS_QUERY_KEY, 'income-expense', period, startDate, endDate, accountIds, displayCurrency],
     queryFn: async (): Promise<IncomeExpenseData[]> => {
       if (!user) throw new Error('User not authenticated');
 
@@ -198,7 +226,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       let query = supabase
         .from('transactions')
-        .select('*')
+        .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .gte('date', start.toISOString())
         .lte('date', end.toISOString());
@@ -211,10 +239,10 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       if (error) throw error;
 
-      // Group by period
+      // Group by period with currency conversion
       const periodMap: Record<string, { income: number; expenses: number }> = {};
 
-      data.forEach((tx) => {
+      for (const tx of data) {
         const date = new Date(tx.date);
         let key: string;
 
@@ -233,12 +261,17 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
           periodMap[key] = { income: 0, expenses: 0 };
         }
 
+        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
+          ? convertAmount(tx.amount, accountCurrency, displayCurrency)
+          : tx.amount;
+
         if (tx.type === 'income') {
-          periodMap[key].income += tx.amount;
+          periodMap[key].income += convertedAmount;
         } else {
-          periodMap[key].expenses += tx.amount;
+          periodMap[key].expenses += convertedAmount;
         }
-      });
+      }
 
       // Convert to array
       const incomeExpenseArray: IncomeExpenseData[] = Object.entries(periodMap)
@@ -258,7 +291,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
   // Fetch monthly comparison
   const { data: monthlyComparison, isLoading: isLoadingMonthly } = useQuery({
-    queryKey: [...ANALYTICS_QUERY_KEY, 'monthly-comparison', startDate, endDate, accountIds],
+    queryKey: [...ANALYTICS_QUERY_KEY, 'monthly-comparison', startDate, endDate, accountIds, displayCurrency],
     queryFn: async (): Promise<MonthlyComparison[]> => {
       if (!user) throw new Error('User not authenticated');
 
@@ -266,7 +299,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       let query = supabase
         .from('transactions')
-        .select('*')
+        .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .gte('date', start.toISOString())
         .lte('date', end.toISOString());
@@ -279,14 +312,14 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       if (error) throw error;
 
-      // Group by month
+      // Group by month with currency conversion
       const monthMap: Record<string, {
         income: number;
         expenses: number;
         categories: Record<string, number>;
       }> = {};
 
-      data.forEach((tx) => {
+      for (const tx of data) {
         const date = new Date(tx.date);
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
@@ -294,14 +327,19 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
           monthMap[key] = { income: 0, expenses: 0, categories: {} };
         }
 
+        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
+          ? convertAmount(tx.amount, accountCurrency, displayCurrency)
+          : tx.amount;
+
         if (tx.type === 'income') {
-          monthMap[key].income += tx.amount;
+          monthMap[key].income += convertedAmount;
         } else {
-          monthMap[key].expenses += tx.amount;
+          monthMap[key].expenses += convertedAmount;
           const category = tx.category || 'Uncategorized';
-          monthMap[key].categories[category] = (monthMap[key].categories[category] || 0) + tx.amount;
+          monthMap[key].categories[category] = (monthMap[key].categories[category] || 0) + convertedAmount;
         }
-      });
+      }
 
       // Convert to array
       const comparison: MonthlyComparison[] = Object.entries(monthMap)
