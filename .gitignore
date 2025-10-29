@@ -26,7 +26,20 @@ dist-ssr
 # Environment variables
 .env
 .env.local
+.env.development
+.env.test
 .env.production
+.env.*.local
+*.env
+
+# Secrets and API keys
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+.secrets
+SET_PREMIUM_ACCOUNT.sql
 
 # Build artifacts
 build
