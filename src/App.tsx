@@ -8,6 +8,7 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { BudgetsPage } from '@/pages/BudgetsPage';
 import { BillsPage } from '@/pages/BillsPage';
 import { RecurringPage } from '@/pages/RecurringPage';
+import { NotificationCenterPage } from '@/pages/NotificationCenterPage';
 import { Layout } from '@/components/layout/Layout';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
@@ -42,6 +43,7 @@ function AppRoutes() {
           <Route path="/bills" element={<BillsPage />} />
           <Route path="/recurring" element={<RecurringPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/notifications" element={<NotificationCenterPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

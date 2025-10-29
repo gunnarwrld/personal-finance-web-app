@@ -2,6 +2,7 @@ import React from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import { NotificationBell } from '@/components/notifications';
 
 export const TopBar: React.FC = () => {
   const { user } = useAuth();
@@ -36,6 +37,9 @@ export const TopBar: React.FC = () => {
 
           {/* Right: User Info & Theme Toggle */}
           <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
