@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { LogOut, RefreshCw, Crown, Check, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LogOut, RefreshCw, Crown, Check, CreditCard } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Select } from '@/components/ui';
+import { SubscriptionModal } from '@/components/subscription';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -14,11 +15,25 @@ export const SettingsPage: React.FC = () => {
   const { 
     subscription, 
     isPremium, 
-    updateSubscriptionAsync, 
-    cancelSubscriptionAsync,
-    isCanceling,
+    openCustomerPortal,
   } = useSubscription();
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
+  // Check for payment success/cancel in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const payment = urlParams.get('payment');
+    
+    if (payment === 'success') {
+      alert('🎉 Welcome to Premium! Your subscription is now active.');
+      // Clear the URL parameter
+      window.history.replaceState({}, '', '/settings');
+    } else if (payment === 'cancelled') {
+      alert('Subscription cancelled. You can try again anytime!');
+      // Clear the URL parameter
+      window.history.replaceState({}, '', '/settings');
+    }
+  }, []);
 
   const handleCurrencyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     try {
@@ -41,31 +56,13 @@ export const SettingsPage: React.FC = () => {
     label: currency,
   }));
 
-  const handleUpgrade = async () => {
-    try {
-      // In production, this would redirect to Stripe checkout
-      // For now, we'll simulate the upgrade
-      await updateSubscriptionAsync({
-        subscription_tier: 'premium',
-        subscription_status: 'active',
-        current_period_start: new Date().toISOString(),
-        current_period_end: new Date(
-          Date.now() + (selectedPlan === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000
-        ).toISOString(),
-      });
-      console.log('Upgraded to premium:', selectedPlan);
-    } catch (error) {
-      console.error('Failed to upgrade:', error);
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    if (window.confirm('Are you sure you want to cancel your premium subscription? You will lose access to premium features at the end of your billing period.')) {
-      try {
-        await cancelSubscriptionAsync();
-      } catch (error) {
-        console.error('Failed to cancel subscription:', error);
-      }
+  const handleManageSubscription = () => {
+    if (isPremium) {
+      // Open Stripe Customer Portal
+      openCustomerPortal();
+    } else {
+      // Show subscription modal
+      setShowSubscriptionModal(true);
     }
   };
 
@@ -189,103 +186,42 @@ export const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Pricing Plans (for free users) */}
-            {!isPremium && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Choose Your Plan:
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Monthly Plan */}
-                  <button
-                    onClick={() => setSelectedPlan('monthly')}
-                    className={`p-4 rounded-lg border-2 transition-all text-left ${
-                      selectedPlan === 'monthly'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-semibold text-gray-900 dark:text-white">Monthly</h5>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedPlan === 'monthly' ? 'border-blue-500' : 'border-gray-300'
-                      }`}>
-                        {selectedPlan === 'monthly' && (
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      $4.99<span className="text-sm font-normal text-gray-600 dark:text-gray-400">/month</span>
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Billed monthly
-                    </p>
-                  </button>
-
-                  {/* Annual Plan */}
-                  <button
-                    onClick={() => setSelectedPlan('annual')}
-                    className={`p-4 rounded-lg border-2 transition-all text-left relative ${
-                      selectedPlan === 'annual'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <span className="absolute -top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                      Save 17%
-                    </span>
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-semibold text-gray-900 dark:text-white">Annual</h5>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedPlan === 'annual' ? 'border-blue-500' : 'border-gray-300'
-                      }`}>
-                        {selectedPlan === 'annual' && (
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      $49.99<span className="text-sm font-normal text-gray-600 dark:text-gray-400">/year</span>
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      $4.16/month when billed annually
-                    </p>
-                  </button>
-                </div>
-
-                {/* Upgrade Button */}
+            {/* Action Buttons */}
+            <div className="pt-4">
+              {isPremium ? (
                 <Button
-                  onClick={handleUpgrade}
+                  onClick={handleManageSubscription}
+                  variant="outline"
+                  className="w-full"
+                  leftIcon={<CreditCard className="h-5 w-5" />}
+                >
+                  Manage Subscription
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleManageSubscription}
                   variant="primary"
-                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   leftIcon={<Crown className="h-5 w-5" />}
                 >
                   Upgrade to Premium
                 </Button>
-              </div>
-            )}
-
-            {/* Cancel Subscription (for premium users) */}
-            {isPremium && subscription?.subscription_status === 'active' && (
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Button
-                  onClick={handleCancelSubscription}
-                  variant="outline"
-                  isLoading={isCanceling}
-                  className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  leftIcon={<X className="h-4 w-4" />}
-                >
-                  {isCanceling ? 'Canceling...' : 'Cancel Subscription'}
-                </Button>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Your subscription will remain active until the end of the current billing period
-                </p>
-              </div>
-            )}
+              )}
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                {isPremium 
+                  ? 'Manage billing, update payment method, or cancel subscription' 
+                  : 'Unlock all features with a premium subscription'}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Subscription Modal */}
+      <SubscriptionModal 
+        isOpen={showSubscriptionModal} 
+        onClose={() => setShowSubscriptionModal(false)}
+      />
 
       {/* Preferences */}
       <Card>

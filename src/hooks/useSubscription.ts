@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { createCheckoutSession, createCustomerPortalSession } from '@/lib/stripe';
 import type { UserSubscription, SubscriptionTier, SubscriptionStatus } from '@/types';
 import { useAuth } from './useAuth';
 
@@ -99,6 +100,28 @@ export function useSubscription() {
     },
   });
 
+  // Subscribe to premium (redirects to Stripe Checkout)
+  const subscribeToPremium = useMutation({
+    mutationFn: async (priceId: string) => {
+      const result = await createCheckoutSession(priceId);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+  });
+
+  // Open customer portal (redirects to Stripe portal)
+  const openCustomerPortal = useMutation({
+    mutationFn: async () => {
+      const result = await createCustomerPortalSession();
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+  });
+
   // Helper functions
   const isPremium = (): boolean => {
     if (!subscription) return false;
@@ -170,8 +193,13 @@ export function useSubscription() {
     updateSubscriptionAsync: updateSubscription.mutateAsync,
     cancelSubscription: cancelSubscription.mutate,
     cancelSubscriptionAsync: cancelSubscription.mutateAsync,
+    subscribeToPremium: subscribeToPremium.mutate,
+    subscribeToPremiumAsync: subscribeToPremium.mutateAsync,
+    openCustomerPortal: openCustomerPortal.mutate,
+    openCustomerPortalAsync: openCustomerPortal.mutateAsync,
     isUpdating: updateSubscription.isPending,
     isCanceling: cancelSubscription.isPending,
+    isSubscribing: subscribeToPremium.isPending,
     // Helper functions
     isPremium: isPremium(),
     isTrialing: isTrialing(),

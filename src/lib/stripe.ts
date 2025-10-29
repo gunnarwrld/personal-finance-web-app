@@ -1,5 +1,6 @@
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { STRIPE_CONFIG } from '@/config/stripe';
+import { supabase } from './supabase';
 
 let stripePromise: Promise<Stripe | null> | null = null;
 
@@ -21,49 +22,40 @@ export const getStripe = (): Promise<Stripe | null> => {
  * Create a checkout session and redirect to Stripe Checkout
  */
 export const createCheckoutSession = async (
-  priceId: string,
-  customerId?: string
+  priceId: string
 ): Promise<{ error?: string }> => {
   try {
-    // This will be called via Supabase Edge Function in Phase 8.2
-    // For now, we'll prepare the structure
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      return { error: 'You must be logged in to subscribe' };
+    }
+
+    // Call Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      body: {
         priceId,
-        customerId,
         successUrl: STRIPE_CONFIG.successUrl,
         cancelUrl: STRIPE_CONFIG.cancelUrl,
-      }),
+      },
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to create checkout session');
-    }
-
-    const { sessionId, error } = await response.json();
-
     if (error) {
-      return { error };
+      console.error('Error creating checkout session:', error);
+      return { error: error.message || 'Failed to create checkout session' };
     }
 
-    if (!sessionId) {
-      return { error: 'No session ID returned' };
+    if (data?.error) {
+      return { error: data.error };
+    }
+
+    if (!data?.url) {
+      return { error: 'No checkout URL returned' };
     }
 
     // Redirect to Stripe Checkout
-    const stripe = await getStripe();
-    if (!stripe) {
-      return { error: 'Stripe is not configured' };
-    }
-
-    // Use window.location to redirect to Stripe Checkout URL
-    // The Edge Function will return the checkout URL
-    window.location.href = `https://checkout.stripe.com/c/pay/${sessionId}`;
+    window.location.href = data.url;
 
     return {};
   } catch (error) {
@@ -77,30 +69,35 @@ export const createCheckoutSession = async (
  */
 export const createCustomerPortalSession = async (): Promise<{ error?: string }> => {
   try {
-    // This will be called via Supabase Edge Function in Phase 8.2
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal-session`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({
-        returnUrl: window.location.href,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to create portal session');
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      return { error: 'You must be logged in to access the customer portal' };
     }
 
-    const { url, error } = await response.json();
+    // Call Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('create-portal-session', {
+      body: {
+        returnUrl: window.location.href,
+      },
+    });
 
     if (error) {
-      return { error };
+      console.error('Error creating portal session:', error);
+      return { error: error.message || 'Failed to create portal session' };
+    }
+
+    if (data?.error) {
+      return { error: data.error };
+    }
+
+    if (!data?.url) {
+      return { error: 'No portal URL returned' };
     }
 
     // Redirect to Stripe Customer Portal
-    window.location.href = url;
+    window.location.href = data.url;
 
     return {};
   } catch (error) {
