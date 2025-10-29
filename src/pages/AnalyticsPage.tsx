@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar, Download, TrendingUp } from 'lucide-react';
+import { Calendar, Download, TrendingUp, Sparkles } from 'lucide-react';
 import { Card, CardContent, Button, Select } from '@/components/ui';
 import { SpendingTrendsChart, CategoryBreakdownChart, IncomeExpenseChart } from '@/components/analytics';
+import { AIInsightsModal } from '@/components/ai';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -11,6 +12,7 @@ export const AnalyticsPage: React.FC = () => {
   const { preferences } = useUserPreferences();
   const { isPremium } = useSubscription();
   const [period, setPeriod] = useState<AnalyticsPeriod>('monthly');
+  const [showAIModal, setShowAIModal] = useState(false);
   const displayCurrency = preferences?.display_currency || 'USD';
 
   const {
@@ -48,15 +50,27 @@ export const AnalyticsPage: React.FC = () => {
             Visualize your spending patterns and financial trends
           </p>
         </div>
-        {isPremium && (
-          <Button
-            onClick={handleExport}
-            variant="outline"
-            leftIcon={<Download className="h-4 w-4" />}
-          >
-            Export
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {isPremium && (
+            <>
+              <Button
+                onClick={() => setShowAIModal(true)}
+                variant="primary"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                leftIcon={<Sparkles className="h-4 w-4" />}
+              >
+                Ask AI
+              </Button>
+              <Button
+                onClick={handleExport}
+                variant="outline"
+                leftIcon={<Download className="h-4 w-4" />}
+              >
+                Export
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Period Selector */}
@@ -211,6 +225,13 @@ export const AnalyticsPage: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* AI Insights Modal */}
+      <AIInsightsModal 
+        isOpen={showAIModal} 
+        onClose={() => setShowAIModal(false)}
+        currency={displayCurrency}
+      />
     </div>
   );
 };

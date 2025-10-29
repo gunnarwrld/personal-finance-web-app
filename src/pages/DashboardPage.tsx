@@ -1,6 +1,7 @@
 import React from 'react';
 import { BalanceCard, QuickActions, RecentTransactions } from '@/components/dashboard';
 import { SubscriptionBanner } from '@/components/subscription';
+import { AIInsightsCard } from '@/components/ai';
 import { useBudgetsWithSpending } from '@/hooks/useBudgets';
 import { useBillReminders } from '@/hooks/useBillReminders';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -37,6 +38,9 @@ export const DashboardPage: React.FC = () => {
       {/* Premium Features Grid */}
       {isPremium && (
         <div className="grid gap-6 md:grid-cols-2">
+          {/* AI Insights Card */}
+          <AIInsightsCard />
+          
           {/* Budget Overview Widget */}
           {topBudgets.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
