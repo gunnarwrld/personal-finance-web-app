@@ -424,6 +424,108 @@ export interface Database {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: number
+          user_id: string
+          type: string
+          title: string
+          message: string
+          priority: string
+          is_read: boolean
+          related_id: number | null
+          related_type: string | null
+          action_url: string | null
+          metadata: Json | null
+          created_at: string
+          read_at: string | null
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          type: string
+          title: string
+          message: string
+          priority?: string
+          is_read?: boolean
+          related_id?: number | null
+          related_type?: string | null
+          action_url?: string | null
+          metadata?: Json | null
+          created_at?: string
+          read_at?: string | null
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          priority?: string
+          is_read?: boolean
+          related_id?: number | null
+          related_type?: string | null
+          action_url?: string | null
+          metadata?: Json | null
+          created_at?: string
+          read_at?: string | null
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          user_id: string
+          email_notifications: boolean
+          push_notifications: boolean
+          bill_reminders: boolean
+          budget_alerts: boolean
+          recurring_transactions: boolean
+          goal_achievements: boolean
+          subscription_updates: boolean
+          low_balance_alerts: boolean
+          unusual_spending_alerts: boolean
+          notification_frequency: string
+          quiet_hours_start: string | null
+          quiet_hours_end: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          email_notifications?: boolean
+          push_notifications?: boolean
+          bill_reminders?: boolean
+          budget_alerts?: boolean
+          recurring_transactions?: boolean
+          goal_achievements?: boolean
+          subscription_updates?: boolean
+          low_balance_alerts?: boolean
+          unusual_spending_alerts?: boolean
+          notification_frequency?: string
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          email_notifications?: boolean
+          push_notifications?: boolean
+          bill_reminders?: boolean
+          budget_alerts?: boolean
+          recurring_transactions?: boolean
+          goal_achievements?: boolean
+          subscription_updates?: boolean
+          low_balance_alerts?: boolean
+          unusual_spending_alerts?: boolean
+          notification_frequency?: string
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       currency_rates: {
         Row: {
           id: number
