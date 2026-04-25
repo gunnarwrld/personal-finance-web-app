@@ -1,237 +1,250 @@
-# Personal Finance Web Application
+# FinanceTracker
 
-> **Note:** This is a private project for personal use.
+> Smart personal finance management with multi-currency support, AI-powered insights, and Stripe-powered premium subscriptions.
 
 ## Overview
 
-A comprehensive personal finance management application with premium features for tracking income, expenses, and financial health through interactive dashboards, AI-powered insights, and multi-currency support.
-
-Originally built with vanilla JavaScript, the application was completely refactored to React + TypeScript for better type safety, maintainability, and scalability.
+FinanceTracker is a full-featured personal finance web application built with React and TypeScript. It connects to Supabase for authentication and data persistence, uses Stripe for subscription payments, and integrates Groq AI for intelligent financial insights. The app is installable as a Progressive Web App (PWA).
 
 ## Features
 
-### Core Features
-- **Multi-Account Management**: Track multiple bank accounts, credit cards, and cash wallets with currency-specific balances
-- **Transaction Tracking**: Record income and expenses with categories, descriptions, and dates
-- **Real-time Currency Conversion**: Automatic exchange rate updates with caching for performance
-- **Dashboard Analytics**: At-a-glance financial overview with recent transactions and trends
-- **Google OAuth Authentication**: Secure, passwordless login
-- **Progressive Web App**: Installable on devices with offline support
+### Free Tier
+- **Multi-Account Management** — Track multiple bank accounts, wallets, and cards
+- **Transaction Tracking** — Record income and expenses with categories
+- **Multi-Currency Support** — 8 currencies with live exchange rates via Frankfurter API
+- **Google OAuth** — Secure, passwordless authentication via Supabase Auth
+- **Dashboard** — At-a-glance financial overview with recent transactions
+- **Progressive Web App** — Installable on mobile and desktop with offline support
+- **Dark Mode** — System-aware theme with manual toggle
 
-### Premium Features 🌟
-- **Advanced Analytics**: Interactive charts with Recharts for spending trends, category breakdowns, and income/expense comparisons
-- **AI-Powered Insights**: Financial analysis using Groq API
-  - Spending pattern analysis
-  - Budget recommendations
-  - Savings opportunities
-  - Expense predictions
-  - Personalized financial advice
-- **Push Notifications**: Budget alerts and financial reminders
-- **Stripe Integration**: Secure subscription management with customer portal
+### Premium Tier ($9.99/mo or $99.99/yr)
+- **Advanced Analytics** — Interactive charts (spending trends, category breakdown, income vs expenses) powered by Recharts
+- **AI-Powered Insights** — Financial analysis using Groq API (spending patterns, budget recommendations, savings opportunities, expense predictions, personalized advice)
+- **Budget Tracking** — Set and monitor category-based budgets with progress bars and alerts
+- **Bill Reminders** — Track upcoming and overdue bills
+- **Recurring Transactions** — Automate repeating income/expenses
+- **Account Transfers** — Move funds between accounts
+- **CSV Export** — Download analytics data for external use
+- **Unlimited Accounts** — Free tier limited to 3 accounts
 
-## Technology Stack
+## Tech Stack
 
-### Frontend
-- **React 18** with **TypeScript** for type-safe component architecture
-- **Tailwind CSS** for modern, responsive UI
-- **TanStack Query** for server state management and caching
-- **Recharts** for data visualization
-- **Vite** for fast development and optimized builds
-- **Vite PWA Plugin** for Progressive Web App capabilities
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, TypeScript, Tailwind CSS |
+| **State Management** | TanStack React Query (server state), Zustand (client state) |
+| **Routing** | React Router v6 |
+| **Charts** | Recharts |
+| **Forms** | React Hook Form + Zod validation |
+| **Build** | Vite + vite-plugin-pwa |
+| **Backend/DB** | Supabase (PostgreSQL + Auth + Edge Functions + RLS) |
+| **Payments** | Stripe (Checkout, Customer Portal, Webhooks via Edge Functions) |
+| **AI** | Groq API (mixtral-8x7b, llama3-70b, llama-3.1-70b) |
+| **Currency Rates** | Frankfurter API (free, no key required) |
 
-### Backend & Services
-- **Supabase**: PostgreSQL database, authentication, and real-time subscriptions
-- **Stripe**: Payment processing and subscription management
-- **Groq API**: AI-powered financial insights (mixtral-8x7b-32768, llama3-70b-8192)
-- **Exchange Rate APIs**: Real-time currency conversion
-
-### Security
-- Row Level Security (RLS) on all database tables
-- Environment variable protection with enhanced `.gitignore`
-- Secure API key management
-- Google OAuth 2.0 authentication
-
-## Project Structure
+## Architecture
 
 ```
-src/
-├── components/          # React components organized by feature
-│   ├── ai/             # AI insights components
-│   ├── analytics/      # Charts and analytics visualizations
-│   ├── auth/           # Authentication flows
-│   ├── accounts/       # Account management
-│   ├── transactions/   # Transaction handling
-│   ├── dashboard/      # Dashboard widgets
-│   ├── notifications/  # Notification center
-│   └── ui/             # Reusable UI primitives
-├── hooks/              # Custom React hooks
-│   ├── useAuth.ts      # Authentication logic
-│   ├── useAccounts.ts  # Account data fetching
-│   ├── useAI.ts        # AI insights with premium gating
-│   └── ...
-├── lib/                # Utility functions and configurations
-│   ├── supabase.ts     # Supabase client setup
-│   ├── groq.ts         # Groq AI service
-│   └── validation.ts   # Zod schemas
-├── config/             # Application configuration
-│   └── groq.ts         # AI prompts and settings
-├── types/              # TypeScript type definitions
-│   ├── accounts.ts
-│   ├── transactions.ts
-│   ├── ai.ts
-│   └── database.ts     # Supabase schema types
-└── pages/              # Page components
+┌─────────────────────┐     ┌──────────────────┐
+│   React SPA (Vite)  │────▶│   Supabase       │
+│   - Components      │     │   - PostgreSQL   │
+│   - Hooks           │     │   - Auth (Google)│
+│   - TanStack Query  │     │   - RLS Policies │
+└────────┬────────────┘     │   - Edge Funcs   │
+         │                  └────────┬─────────┘
+         │                           │
+    ┌────▼────┐              ┌───────▼───────┐
+    │ Stripe  │              │  Groq AI API  │
+    │ (JS SDK)│              │  (via SDK)    │
+    └─────────┘              └───────────────┘
 ```
 
-## Database Schema
+The app is a **client-side SPA** — there is no custom backend server. All server-side logic (Stripe checkout, webhooks, portal sessions) runs as **Supabase Edge Functions** (Deno). The frontend communicates with Supabase directly using the JS client with Row Level Security (RLS) enforcing data isolation per user.
 
-### Core Tables
-- **accounts**: Financial account information (name, type, balance, currency)
-- **transactions**: Income and expense records linked to accounts
-- **user_preferences**: User settings (display currency, UI preferences, premium status)
-- **currency_rates**: Cached exchange rate data
-
-### Premium Tables
-- **user_subscriptions**: Stripe subscription details (tier, status, dates)
-- **user_notifications**: Notification history and preferences
-
-**Security**: All tables implement Row Level Security (RLS) policies to ensure users can only access their own data.
-
-## Setup & Configuration
+## Setup Instructions
 
 ### Prerequisites
-- Node.js 18 or higher
-- Supabase account
-- Stripe account (for premium features)
-- Groq API key (for AI features)
+- Node.js 18+
+- A [Supabase](https://supabase.com) account with a project
+- A [Stripe](https://stripe.com) account (for premium features)
+- A [Groq](https://console.groq.com) API key (for AI features)
 
-### Environment Variables
-Create a `.env` file in the root directory (see `.env.example` for template):
-
-```env
-# Supabase
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Stripe (Public keys only in frontend)
-VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
-
-# Groq AI
-VITE_GROQ_API_KEY=your_groq_api_key
-```
-
-**⚠️ Security Note**: Never commit the `.env` file to version control. Only `.env.example` should be tracked.
-
-### Installation
+### 1. Clone the repository
 
 ```bash
-# Install dependencies
+git clone https://github.com/gunnarwrld/personal-finance-web-app.git
+cd personal-finance-web-app
+```
+
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and fill in your values (see [Environment Variables](#environment-variables) below).
+
+### 3. Install dependencies
+
+```bash
 npm install
+```
 
-# Run development server
+### 4. Run database migrations
+
+In your Supabase SQL Editor, run the migration files from `database_migrations/` in order:
+- `006_notifications.sql` — Creates notifications and notification_preferences tables with RLS
+
+> **Note**: Core tables (accounts, transactions, user_preferences, user_subscriptions, currency_rates) should already exist in your Supabase project. If setting up from scratch, you'll need to create them — see the database schema types in `src/types/database.types.ts`.
+
+### 5. Deploy Supabase Edge Functions
+
+See [docs/STRIPE_SETUP.md](docs/STRIPE_SETUP.md) for detailed instructions on deploying:
+- `create-checkout-session` — Creates Stripe Checkout sessions
+- `create-portal-session` — Creates Stripe Customer Portal sessions
+- `stripe-webhooks` — Handles Stripe webhook events
+
+### 6. Start the dev server
+
+```bash
 npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
 ```
 
-### Premium Account Setup
-To set an account as premium (for testing or personal use):
+The app will be available at `http://localhost:5173`.
 
-1. Get the user's email from Supabase Auth dashboard
-2. Run SQL in Supabase SQL Editor:
+## Environment Variables
 
-```sql
--- Update user_subscriptions
-INSERT INTO user_subscriptions (user_id, subscription_tier, subscription_status, current_period_start, current_period_end)
-SELECT id, 'premium', 'active', CURRENT_TIMESTAMP, '2099-12-31'
-FROM auth.users WHERE email = 'your_email@example.com'
-ON CONFLICT (user_id) DO UPDATE 
-SET subscription_tier = 'premium',
-    subscription_status = 'active',
-    current_period_end = '2099-12-31';
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | ✅ | Your Supabase project URL (e.g., `https://xyz.supabase.co`) |
+| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase anonymous/public API key |
+| `VITE_STRIPE_PUBLIC_KEY` | ⚠️ | Stripe publishable key (`pk_test_...` or `pk_live_...`). Required for payments. |
+| `VITE_STRIPE_MONTHLY_PRICE_ID` | ⚠️ | Stripe Price ID for the monthly plan. Required for payments. |
+| `VITE_STRIPE_YEARLY_PRICE_ID` | ⚠️ | Stripe Price ID for the yearly plan. Required for payments. |
+| `VITE_GROQ_API_KEY` | ⚠️ | Groq API key for AI features. Required for AI insights. |
+| `VITE_CURRENCY_API_URL` | ❌ | Currency API URL (optional — app uses Frankfurter API as default) |
+| `VITE_APP_NAME` | ❌ | App display name (default: `FinanceTracker`) |
+| `VITE_APP_VERSION` | ❌ | App version (default: `2.0.0`) |
+| `VITE_APP_URL` | ❌ | App URL for Stripe redirects (default: `window.location.origin`) |
 
--- Update user_preferences
-UPDATE user_preferences 
-SET is_premium = true 
-WHERE user_id = (SELECT id FROM auth.users WHERE email = 'your_email@example.com');
+> ⚠️ = Required for that specific feature to work. The app will still load without them.
+
+## Payment Setup (Stripe)
+
+For detailed Stripe integration instructions, see **[docs/STRIPE_SETUP.md](docs/STRIPE_SETUP.md)**.
+
+Quick summary:
+1. Create products and prices in Stripe Dashboard ($9.99/mo, $99.99/yr)
+2. Add Price IDs to `.env`
+3. Deploy Supabase Edge Functions (checkout, portal, webhooks)
+4. Configure webhook endpoint in Stripe Dashboard
+5. Set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` as Supabase secrets
+
+### Local development with Stripe CLI
+
+```bash
+# Install Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# Login
+stripe login
+
+# Forward webhooks to your local Supabase Edge Function
+stripe listen --forward-to http://localhost:54321/functions/v1/stripe-webhooks
+
+# Use the webhook signing secret from the output in your Supabase secrets
 ```
 
-### Stripe Webhooks (Production)
-For subscription management to work, configure Stripe webhooks to call your Supabase Edge Function:
+## Folder Structure
 
 ```
-Endpoint: https://your-project.supabase.co/functions/v1/stripe-webhook
-Events: customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, checkout.session.completed
+personal-finance-web-app/
+├── src/
+│   ├── components/          # React components by feature
+│   │   ├── accounts/        # Account CRUD (card, modal, list)
+│   │   ├── ai/              # AI insights card and modal
+│   │   ├── analytics/       # Charts (spending, categories, income/expense)
+│   │   ├── auth/             # Google sign-in button
+│   │   ├── bills/            # Bill reminder components
+│   │   ├── budgets/          # Budget tracking components
+│   │   ├── dashboard/        # Balance card, quick actions, recent transactions
+│   │   ├── layout/           # TopBar, BottomNav, Layout wrapper
+│   │   ├── notifications/    # Bell icon and dropdown
+│   │   ├── quick/            # Quick transaction FAB
+│   │   ├── recurring/        # Recurring transaction components
+│   │   ├── subscription/     # Upgrade banner and subscription modal
+│   │   ├── transactions/     # Transaction CRUD
+│   │   └── ui/               # Reusable primitives (Button, Card, Input, Modal, etc.)
+│   ├── config/              # App configuration
+│   │   ├── groq.ts          # AI model config and prompts
+│   │   └── stripe.ts        # Stripe plans, pricing, and config
+│   ├── hooks/               # Custom React hooks (one per feature)
+│   ├── lib/                 # Utility libraries
+│   │   ├── categories.ts    # Category colors and icons
+│   │   ├── currency.ts      # Exchange rates and formatting
+│   │   ├── groq.ts          # Groq AI client and functions
+│   │   ├── stripe.ts        # Stripe checkout/portal helpers
+│   │   ├── supabase.ts      # Supabase client and auth helpers
+│   │   ├── utils.ts         # General utilities (cn, formatDate, storage, etc.)
+│   │   └── validations.ts   # Zod schemas for forms
+│   ├── pages/               # Route-level page components
+│   ├── types/               # TypeScript type definitions
+│   ├── App.tsx              # Router and route definitions
+│   ├── main.tsx             # Entry point with React Query provider
+│   └── index.css            # Tailwind directives and global styles
+├── database_migrations/     # SQL migration files for Supabase
+├── docs/                    # Additional documentation
+│   └── STRIPE_SETUP.md      # Stripe integration guide
+├── .env.example             # Environment variable template
+├── .gitattributes           # Line ending normalization (LF)
+├── PROJECT_STATUS.md        # Development status and notes
+├── SECURITY_CHECKLIST.md    # Security verification checklist
+├── vite.config.ts           # Vite + PWA configuration
+├── tailwind.config.js       # Tailwind theme customization
+└── tsconfig.json            # TypeScript configuration
+```
+
+## Known Limitations
+
+- **No email/password auth** — Only Google OAuth is supported
+- **No server-side rendering** — Pure client-side SPA
+- **Groq API key exposed in frontend** — The `VITE_GROQ_API_KEY` is bundled client-side. For production, consider proxying AI requests through a Supabase Edge Function to keep the key server-side.
+- **No automated recurring transaction processing** — Recurring transactions need to be triggered manually (a cron job or scheduled function would be needed for full automation)
+- **Limited to 8 currencies** — USD, EUR, GBP, JPY, CNY, SEK, AUD, CAD
+- **No bank sync** — Manual transaction entry only (no Plaid/Teller integration)
+- **Edge Function stubs in docs** — The webhook handler code in `docs/STRIPE_SETUP.md` needs to be deployed as actual Supabase Edge Functions
+
+## Scripts
+
+```bash
+npm run dev       # Start development server (Vite)
+npm run build     # TypeScript check + production build
+npm run preview   # Preview production build locally
+npm run lint      # Run ESLint
+npm run type-check # TypeScript type checking only
 ```
 
 ## Deployment
 
-Deployed to Vercel with automatic builds on push to main branch.
-
-### Vercel Configuration
-- Environment variables configured in Vercel dashboard
-- Supabase authentication redirect URLs updated to include production domain
+The app is configured for deployment on **Vercel**:
 - Build command: `npm run build`
 - Output directory: `dist`
+- Set all `VITE_*` environment variables in your Vercel dashboard
+- Configure Google OAuth redirect URLs in both Supabase and Google Cloud Console to include your production domain
 
-### Post-Deployment Checklist
-- ✅ Configure Supabase authentication redirect URLs
-- ✅ Set up Stripe webhook endpoint
-- ✅ Test Google OAuth flow
-- ✅ Verify premium features work correctly
-- ✅ Check PWA installation
+## Security
 
-## Security Best Practices
+See [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) for the full security verification checklist.
 
-This project follows security best practices outlined in `SECURITY_CHECKLIST.md`:
-
-- ✅ All sensitive data in `.env` (never committed)
-- ✅ Enhanced `.gitignore` protecting environment files and secrets
-- ✅ `.env.example` contains only placeholders
-- ✅ Row Level Security enabled on all database tables
-- ✅ Stripe secret keys only in Supabase Edge Functions
-- ✅ API keys validated before use
-
-**Before pushing to GitHub:**
-1. Run `git status` to verify `.env` is not staged
-2. Check `git ls-files | grep env` returns only `.env.example`
-3. Search for secrets: `git grep -i "sk_live\|sk_test\|gsk_"`
-
-## Development Notes
-
-### Challenges Solved
-- OAuth redirect configuration for development/production environments
-- Type safety with comprehensive Supabase schema types
-- RLS policies and security best practices
-- Multi-currency conversion with caching
-- AI integration with premium feature gating
-
-### AI Features Configuration
-The Groq AI integration uses three models for different purposes:
-- **mixtral-8x7b-32768**: Default model (balanced speed/quality)
-- **llama3-70b-8192**: Alternative for complex analysis
-- **llama-3.1-70b-versatile**: Creative financial advice
-
-Rate limits: 30 requests/minute, 14,400 requests/day
-
-## Future Enhancements
-
-Potential future improvements:
-- Budget tracking with threshold alerts
-- Recurring transaction support
-- Data export (CSV, PDF reports)
-- Advanced transaction search and filtering
-- Bank API integration for automatic imports
-- Enhanced data visualizations
-- Mobile app (React Native)
-- Investment tracking
+Key measures:
+- ✅ Row Level Security (RLS) on all database tables
+- ✅ `.env` never committed (enforced by `.gitignore`)
+- ✅ Stripe secret keys only in Supabase Edge Functions (never in frontend)
+- ✅ API key validation before use
+- ✅ Session-based auth with automatic token refresh
 
 ---
 
-**License**: Private project - All rights reserved
+**License**: Private — All rights reserved
 
-**Last Updated**: October 2025
+**Last Updated**: April 2026

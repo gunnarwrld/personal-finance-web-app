@@ -34,8 +34,54 @@ export const AnalyticsPage: React.FC = () => {
   ];
 
   const handleExport = () => {
-    // TODO: Implement export functionality
-    console.log('Export analytics data');
+    if (!summary && !spendingTrends && !categoryBreakdown) return;
+
+    const rows: string[] = [];
+    
+    // Summary section
+    if (summary) {
+      rows.push('Analytics Summary');
+      rows.push(`Period,${period}`);
+      rows.push(`Currency,${displayCurrency}`);
+      rows.push(`Total Income,${summary.totalIncome.toFixed(2)}`);
+      rows.push(`Total Expenses,${summary.totalExpenses.toFixed(2)}`);
+      rows.push(`Net Savings,${summary.netSavings.toFixed(2)}`);
+      rows.push(`Savings Rate,${summary.savingsRate.toFixed(1)}%`);
+      rows.push(`Top Category,${summary.topSpendingCategory.category},${summary.topSpendingCategory.amount.toFixed(2)}`);
+      rows.push('');
+    }
+
+    // Spending trends section
+    if (spendingTrends && spendingTrends.length > 0) {
+      rows.push('Spending Trends');
+      const trendKeys = Object.keys(spendingTrends[0]).join(',');
+      rows.push(trendKeys);
+      spendingTrends.forEach((item: Record<string, unknown>) => {
+        rows.push(Object.values(item).join(','));
+      });
+      rows.push('');
+    }
+
+    // Category breakdown section
+    if (categoryBreakdown && categoryBreakdown.length > 0) {
+      rows.push('Category Breakdown');
+      rows.push('Category,Amount,Percentage');
+      categoryBreakdown.forEach((item: { category: string; amount: number; percentage: number }) => {
+        rows.push(`${item.category},${item.amount.toFixed(2)},${item.percentage.toFixed(1)}%`);
+      });
+    }
+
+    // Create and download CSV
+    const csvContent = rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analytics_${period}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (

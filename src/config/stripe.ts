@@ -1,8 +1,19 @@
 // Stripe Price IDs (will be set after creating products in Stripe Dashboard)
 export const STRIPE_PRICE_IDS = {
-  monthly: import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID || 'price_monthly_placeholder',
-  yearly: import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID || 'price_yearly_placeholder',
+  monthly: import.meta.env.VITE_STRIPE_MONTHLY_PRICE_ID || '',
+  yearly: import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID || '',
 } as const;
+
+// Validate price IDs are configured
+export const isStripeConfigured = (): boolean => {
+  return !!(
+    STRIPE_CONFIG.publishableKey &&
+    STRIPE_PRICE_IDS.monthly &&
+    STRIPE_PRICE_IDS.yearly &&
+    !STRIPE_PRICE_IDS.monthly.includes('placeholder') &&
+    !STRIPE_PRICE_IDS.yearly.includes('placeholder')
+  );
+};
 
 // Stripe Configuration
 export const STRIPE_CONFIG = {

@@ -50,7 +50,6 @@ export const fetchExchangeRates = async (): Promise<Record<string, number>> => {
         ...data.rates,
       };
       
-      console.log('Exchange rates updated successfully:', new Date(data.date).toLocaleDateString());
       return rates;
     }
 

@@ -36,7 +36,7 @@ Enhanced `.gitignore` now excludes:
 
 ### Stored in `.env` (Never commit this file):
 ```
-VITE_SUPABASE_URL=https://pmeajlxzukzhcmjmclbf.supabase.co
+VITE_SUPABASE_URL=https://<your-project>.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGci... (Public - safe to expose in frontend)
 VITE_STRIPE_PUBLIC_KEY=pk_live_... (Public - safe to expose in frontend)
 VITE_GROQ_API_KEY=gsk_... (PRIVATE - keep secret!)
@@ -151,4 +151,4 @@ git push origin --force --all
 
 **Last Verified**: ${new Date().toISOString().split('T')[0]}
 **Project**: personal-finance-web-app
-**Account**: ariasgunnar@gmail.com (Premium Setup Ready)
+**Account**: <your-email> (Premium Setup Ready)

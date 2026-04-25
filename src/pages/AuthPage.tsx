@@ -126,7 +126,7 @@ export const AuthPage: React.FC = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center text-white/80 text-sm">
-          <p>© 2024 FinanceTracker. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} FinanceTracker. All rights reserved.</p>
         </div>
       </div>
     </div>
