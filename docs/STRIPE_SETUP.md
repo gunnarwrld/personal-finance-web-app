@@ -161,18 +161,105 @@ serve(async (req) => {
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object
-        // Update user_subscriptions table
+        const session = event.data.object as Stripe.Checkout.Session
+        const customerEmail = session.customer_details?.email
+
+        if (customerEmail) {
+          // Look up user by email
+          const { data: userData } = await supabase.auth.admin.listUsers()
+          const user = userData?.users?.find(u => u.email === customerEmail)
+
+          if (user) {
+            // Upsert subscription record
+            await supabase.from('user_subscriptions').upsert({
+              user_id: user.id,
+              stripe_customer_id: session.customer as string,
+              stripe_subscription_id: session.subscription as string,
+              subscription_tier: 'premium',
+              subscription_status: 'active',
+              current_period_start: new Date().toISOString(),
+              current_period_end: new Date(
+                Date.now() + 30 * 24 * 60 * 60 * 1000
+              ).toISOString(),
+            }, { onConflict: 'user_id' })
+
+            // Update premium flag in user_preferences
+            await supabase.from('user_preferences')
+              .update({ is_premium: true })
+              .eq('user_id', user.id)
+          }
+        }
         break
       }
+
       case 'customer.subscription.updated': {
-        const subscription = event.data.object
-        // Update subscription status
+        const subscription = event.data.object as Stripe.Subscription
+
+        // Find user by stripe_customer_id
+        const { data: subData } = await supabase
+          .from('user_subscriptions')
+          .select('user_id')
+          .eq('stripe_customer_id', subscription.customer as string)
+          .single()
+
+        if (subData) {
+          const isActive = subscription.status === 'active' || subscription.status === 'trialing'
+
+          await supabase.from('user_subscriptions')
+            .update({
+              subscription_status: subscription.status,
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            })
+            .eq('user_id', subData.user_id)
+
+          await supabase.from('user_preferences')
+            .update({ is_premium: isActive })
+            .eq('user_id', subData.user_id)
+        }
         break
       }
+
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object
-        // Mark subscription as cancelled
+        const subscription = event.data.object as Stripe.Subscription
+
+        const { data: subData } = await supabase
+          .from('user_subscriptions')
+          .select('user_id')
+          .eq('stripe_customer_id', subscription.customer as string)
+          .single()
+
+        if (subData) {
+          await supabase.from('user_subscriptions')
+            .update({
+              subscription_status: 'canceled',
+              subscription_tier: 'free',
+              cancel_at_period_end: false,
+            })
+            .eq('user_id', subData.user_id)
+
+          await supabase.from('user_preferences')
+            .update({ is_premium: false })
+            .eq('user_id', subData.user_id)
+        }
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice
+
+        const { data: subData } = await supabase
+          .from('user_subscriptions')
+          .select('user_id')
+          .eq('stripe_customer_id', invoice.customer as string)
+          .single()
+
+        if (subData) {
+          await supabase.from('user_subscriptions')
+            .update({ subscription_status: 'past_due' })
+            .eq('user_id', subData.user_id)
+        }
         break
       }
     }
