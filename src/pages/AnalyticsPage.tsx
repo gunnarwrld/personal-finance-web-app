@@ -52,12 +52,11 @@ export const AnalyticsPage: React.FC = () => {
     }
 
     // Spending trends section
-    if (spendingTrends && spendingTrends.length > 0) {
+    if (spendingTrends && spendingTrends.data.length > 0) {
       rows.push('Spending Trends');
-      const trendKeys = Object.keys(spendingTrends[0]).join(',');
-      rows.push(trendKeys);
-      spendingTrends.forEach((item: Record<string, unknown>) => {
-        rows.push(Object.values(item).join(','));
+      rows.push('Date,Value,Label,Category');
+      spendingTrends.data.forEach((item) => {
+        rows.push(`${item.date},${item.value},${item.label || ''},${item.category || ''}`);
       });
       rows.push('');
     }
