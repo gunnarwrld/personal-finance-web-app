@@ -37,8 +37,6 @@ export const signInWithGoogle = async () => {
     ? `http://localhost:${window.location.port}/dashboard`
     : `${window.location.origin}/dashboard`;
   
-  console.log('Signing in with redirect to:', redirectUrl);
-  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
