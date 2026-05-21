@@ -88,7 +88,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
       const validatedData = transactionSchema.parse({
         type: formData.type,
         account_id: parseInt(formData.account_id),
-        amount: formData.type === 'expense' ? -Math.abs(parseFloat(formData.amount)) : Math.abs(parseFloat(formData.amount)),
+        amount: Math.abs(parseFloat(formData.amount)), // always positive; hook handles sign
         currency: selectedAccount.currency,
         category: formData.category as TransactionCategory,
         description: formData.description,
