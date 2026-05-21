@@ -46,7 +46,7 @@ export function RecentTransactions() {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h3>
         <Link
-          to="/transactions"
+          to="/accounts"
           className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
           See all

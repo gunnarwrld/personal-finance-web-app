@@ -19,7 +19,6 @@ function App() {
     <BrowserRouter>
       <AppRoutes />
       <ToastContainer />
-      <QuickTransactionFAB />
     </BrowserRouter>
   );
 }
@@ -32,24 +31,27 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/auth" element={!isAuthenticated ? <AuthPage /> : <Navigate to="/dashboard" />} />
-      
-      <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/accounts" element={<AccountsPage />} />
-          <Route path="/budgets" element={<BudgetsPage />} />
-          <Route path="/bills" element={<BillsPage />} />
-          <Route path="/recurring" element={<RecurringPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/notifications" element={<NotificationCenterPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+    <>
+      <Routes>
+        <Route path="/auth" element={!isAuthenticated ? <AuthPage /> : <Navigate to="/dashboard" />} />
+        
+        <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/budgets" element={<BudgetsPage />} />
+            <Route path="/bills" element={<BillsPage />} />
+            <Route path="/recurring" element={<RecurringPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/notifications" element={<NotificationCenterPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/auth"} />} />
-    </Routes>
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/auth"} />} />
+      </Routes>
+      {isAuthenticated && <QuickTransactionFAB />}
+    </>
   );
 }
 
