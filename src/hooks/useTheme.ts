@@ -1,35 +1,38 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { storage } from '@/lib/utils';
 
 type Theme = 'light' | 'dark';
 
 export function useTheme() {
-  const getTheme = (): Theme => {
-    const stored = storage.get<Theme>('theme', 'light');
-    return stored;
-  };
+  const [theme, setThemeState] = useState<Theme>(() => {
+    return storage.get<Theme>('theme', 'light');
+  });
 
-  const setTheme = (theme: Theme) => {
-    storage.set('theme', theme);
-    
-    if (theme === 'dark') {
+  const setTheme = (newTheme: Theme) => {
+    storage.set('theme', newTheme);
+    setThemeState(newTheme);
+
+    if (newTheme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
   };
 
+  // Apply theme on mount
   useEffect(() => {
-    const theme = getTheme();
-    setTheme(theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
 
   return {
-    theme: getTheme(),
+    theme,
     setTheme,
     toggleTheme: () => {
-      const current = getTheme();
-      setTheme(current === 'dark' ? 'light' : 'dark');
+      setTheme(theme === 'dark' ? 'light' : 'dark');
     },
   };
 }
