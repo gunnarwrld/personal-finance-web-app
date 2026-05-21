@@ -48,18 +48,37 @@ export function useCurrency() {
     mutationFn: async () => {
       const rates = await fetchExchangeRates();
 
-      const { data, error } = await supabase
+      // Check if a record already exists
+      const { data: existing } = await supabase
         .from('currency_rates')
-        .upsert({
-          base_currency: 'USD',
-          rates,
-          last_updated: new Date().toISOString(),
-        })
-        .select()
+        .select('id')
+        .order('last_updated', { ascending: false })
+        .limit(1)
         .single();
 
-      if (error) throw error;
-      return data as CurrencyRates;
+      let result;
+      if (existing?.id) {
+        // Update existing record
+        const { data, error } = await supabase
+          .from('currency_rates')
+          .update({ rates, last_updated: new Date().toISOString() })
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+      } else {
+        // Insert new record
+        const { data, error } = await supabase
+          .from('currency_rates')
+          .insert({ base_currency: 'USD', rates, last_updated: new Date().toISOString() })
+          .select()
+          .single();
+        if (error) throw error;
+        result = data;
+      }
+
+      return result as CurrencyRates;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CURRENCY_RATES_QUERY_KEY });

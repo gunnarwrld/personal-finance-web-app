@@ -87,8 +87,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .eq('type', 'expense')
-        .gte('date', start.toISOString())
-        .lte('date', end.toISOString())
+        .gte('date', start.toISOString().split('T')[0])
+        .lte('date', end.toISOString().split('T')[0])
         .order('date', { ascending: true });
 
       if (accountIds && accountIds.length > 0) {
@@ -171,8 +171,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .eq('type', 'expense')
-        .gte('date', start.toISOString())
-        .lte('date', end.toISOString());
+        .gte('date', start.toISOString().split('T')[0])
+        .lte('date', end.toISOString().split('T')[0]);
 
       if (accountIds && accountIds.length > 0) {
         query = query.in('account_id', accountIds);
@@ -228,8 +228,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .from('transactions')
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
-        .gte('date', start.toISOString())
-        .lte('date', end.toISOString());
+        .gte('date', start.toISOString().split('T')[0])
+        .lte('date', end.toISOString().split('T')[0]);
 
       if (accountIds && accountIds.length > 0) {
         query = query.in('account_id', accountIds);
@@ -301,8 +301,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .from('transactions')
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
-        .gte('date', start.toISOString())
-        .lte('date', end.toISOString());
+        .gte('date', start.toISOString().split('T')[0])
+        .lte('date', end.toISOString().split('T')[0]);
 
       if (accountIds && accountIds.length > 0) {
         query = query.in('account_id', accountIds);
