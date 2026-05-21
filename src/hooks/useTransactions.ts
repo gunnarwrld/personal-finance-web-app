@@ -32,6 +32,7 @@ export function useTransactions(
       let query = supabase
         .from('transactions')
         .select('*', { count: 'exact' })
+        .eq('user_id', user.id)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
