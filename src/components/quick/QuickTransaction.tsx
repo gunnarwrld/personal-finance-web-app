@@ -9,7 +9,7 @@ interface QuickTransactionModalProps {
 }
 
 export function QuickTransactionModal({ onClose }: QuickTransactionModalProps) {
-  const { createTransaction } = useTransactions();
+  const { createTransactionAsync } = useTransactions();
   const { accounts } = useAccounts();
   const { user } = useAuth();
 
@@ -33,7 +33,7 @@ export function QuickTransactionModal({ onClose }: QuickTransactionModalProps) {
     if (!user || !accounts[0]) return;
 
     try {
-      await createTransaction({
+      await createTransactionAsync({
         account_id: formData.account_id,
         type: formData.type,
         category: (formData.category || 'Other') as TransactionCategory,

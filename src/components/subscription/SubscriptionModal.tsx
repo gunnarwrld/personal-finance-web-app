@@ -10,7 +10,7 @@ interface SubscriptionModalProps {
 }
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
-  const { subscribeToPremium, isSubscribing } = useSubscription();
+  const { subscribeToPremiumAsync, isSubscribing } = useSubscription();
   const [selectedInterval, setSelectedInterval] = useState<SubscriptionInterval>('year');
 
   if (!isOpen) return null;
@@ -18,7 +18,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   const handleSubscribe = async () => {
     const plan = selectedInterval === 'month' ? SUBSCRIPTION_PLANS.monthly : SUBSCRIPTION_PLANS.yearly;
     try {
-      await subscribeToPremium(plan.priceId);
+      await subscribeToPremiumAsync(plan.priceId);
       // Redirect happens automatically in the mutation
     } catch (error) {
       console.error('Subscription error:', error);
