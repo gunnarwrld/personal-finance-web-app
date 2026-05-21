@@ -32,6 +32,7 @@ export function useUserPreferences() {
           display_currency: 'USD',
           balance_visible: true,
           budget_alerts: true,
+          is_premium: false,
         };
 
         const { data: created, error: createError } = await supabase
