@@ -4,6 +4,16 @@ export const STRIPE_PRICE_IDS = {
   yearly: import.meta.env.VITE_STRIPE_YEARLY_PRICE_ID || '',
 } as const;
 
+// Stripe Configuration — must be declared BEFORE isStripeConfigured to avoid TDZ error
+export const STRIPE_CONFIG = {
+  publishableKey: import.meta.env.VITE_STRIPE_PUBLIC_KEY || '',
+  currency: 'usd',
+  monthlyPriceId: STRIPE_PRICE_IDS.monthly,
+  yearlyPriceId: STRIPE_PRICE_IDS.yearly,
+  successUrl: `${import.meta.env.VITE_APP_URL || window.location.origin}/settings?payment=success`,
+  cancelUrl: `${import.meta.env.VITE_APP_URL || window.location.origin}/settings?payment=cancelled`,
+} as const;
+
 // Validate price IDs are configured
 export const isStripeConfigured = (): boolean => {
   return !!(
@@ -14,16 +24,6 @@ export const isStripeConfigured = (): boolean => {
     !STRIPE_PRICE_IDS.yearly.includes('placeholder')
   );
 };
-
-// Stripe Configuration
-export const STRIPE_CONFIG = {
-  publishableKey: import.meta.env.VITE_STRIPE_PUBLIC_KEY || '',
-  currency: 'usd',
-  monthlyPriceId: STRIPE_PRICE_IDS.monthly,
-  yearlyPriceId: STRIPE_PRICE_IDS.yearly,
-  successUrl: `${import.meta.env.VITE_APP_URL || window.location.origin}/settings?payment=success`,
-  cancelUrl: `${import.meta.env.VITE_APP_URL || window.location.origin}/settings?payment=cancelled`,
-} as const;
 
 // Subscription Plans
 export const SUBSCRIPTION_PLANS = {
