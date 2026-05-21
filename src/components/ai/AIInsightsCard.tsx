@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sparkles, TrendingUp, Lightbulb, AlertCircle, Loader2, X } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 export function AIInsightsCard() {
   const { isPremium } = useSubscription();
   const { transactions } = useTransactions();
+  const navigate = useNavigate();
   const { 
     insights, 
     isAIAvailable, 
@@ -33,7 +35,7 @@ export function AIInsightsCard() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
       const recentTransactions = transactions.filter(
-        (t: any) => new Date(t.transaction_date) >= thirtyDaysAgo
+        (t: any) => new Date(t.date) >= thirtyDaysAgo
       );
       
       if (recentTransactions.length > 0) {
@@ -70,10 +72,7 @@ export function AIInsightsCard() {
             variant="primary"
             className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
             leftIcon={<Sparkles className="h-4 w-4" />}
-            onClick={() => {
-              // Navigate to settings/upgrade page
-              window.location.href = '#/settings';
-            }}
+            onClick={() => navigate('/settings')}
           >
             Upgrade to Access AI Insights
           </Button>
