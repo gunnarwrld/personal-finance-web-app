@@ -122,15 +122,25 @@ export function useSubscription() {
     },
   });
 
-  // Helper functions
-  const isPremium = (): boolean => {
-    if (!subscription) return false;
-    return subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing';
-  };
+  // ────────────────────────────────────────────────────────────────────
+  // FREE-MODE OVERRIDE: All users treated as premium.
+  // To restore freemium, uncomment the original blocks and remove the
+  // override lines directly below each one.
+  // ────────────────────────────────────────────────────────────────────
 
-  const isTrialing = (): boolean => {
-    return subscription?.subscription_status === 'trialing' || false;
-  };
+  // Helper functions
+  // ORIGINAL isPremium:
+  // const isPremium = (): boolean => {
+  //   if (!subscription) return false;
+  //   return subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing';
+  // };
+  const isPremium = (): boolean => true; // FREE-MODE OVERRIDE
+
+  // ORIGINAL isTrialing:
+  // const isTrialing = (): boolean => {
+  //   return subscription?.subscription_status === 'trialing' || false;
+  // };
+  const isTrialing = (): boolean => false; // FREE-MODE OVERRIDE
 
   const daysUntilExpiry = (): number | null => {
     if (!subscription?.current_period_end) return null;
@@ -141,47 +151,27 @@ export function useSubscription() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
-  const canAccessFeature = (feature: 'budgets' | 'recurring' | 'bills' | 'transfers' | 'analytics' | 'unlimited_accounts'): boolean => {
-    // Free tier always has access to basic features
-    if (feature === 'budgets' && subscription?.subscription_tier === 'free') {
-      return false; // Budgets are premium only
-    }
-    if (feature === 'recurring' && subscription?.subscription_tier === 'free') {
-      return false; // Recurring transactions are premium only
-    }
-    if (feature === 'bills' && subscription?.subscription_tier === 'free') {
-      return false; // Bill reminders are premium only
-    }
-    if (feature === 'transfers' && subscription?.subscription_tier === 'free') {
-      return true; // Basic transfers allowed
-    }
-    if (feature === 'analytics' && subscription?.subscription_tier === 'free') {
-      return false; // Advanced analytics are premium only
-    }
-    if (feature === 'unlimited_accounts' && subscription?.subscription_tier === 'free') {
-      return false; // Free tier limited to 3 accounts
-    }
-
-    return isPremium();
-  };
+  // ORIGINAL canAccessFeature:
+  // const canAccessFeature = (feature: 'budgets' | 'recurring' | 'bills' | 'transfers' | 'analytics' | 'unlimited_accounts'): boolean => {
+  //   if (feature === 'budgets' && subscription?.subscription_tier === 'free') return false;
+  //   if (feature === 'recurring' && subscription?.subscription_tier === 'free') return false;
+  //   if (feature === 'bills' && subscription?.subscription_tier === 'free') return false;
+  //   if (feature === 'transfers' && subscription?.subscription_tier === 'free') return true;
+  //   if (feature === 'analytics' && subscription?.subscription_tier === 'free') return false;
+  //   if (feature === 'unlimited_accounts' && subscription?.subscription_tier === 'free') return false;
+  //   return isPremium();
+  // };
+  const canAccessFeature = (_feature: 'budgets' | 'recurring' | 'bills' | 'transfers' | 'analytics' | 'unlimited_accounts'): boolean => true; // FREE-MODE OVERRIDE
 
   const getSubscriptionInfo = () => {
-    if (!subscription) {
-      return {
-        tier: 'free' as SubscriptionTier,
-        status: null as SubscriptionStatus | null,
-        isPremium: false,
-        daysLeft: null as number | null,
-        isTrialing: false,
-      };
-    }
-
+    // FREE-MODE OVERRIDE: Always report as premium
+    // ORIGINAL: if (!subscription) return { tier: 'free', ... isPremium: false, ... };
     return {
-      tier: subscription.subscription_tier,
-      status: subscription.subscription_status,
-      isPremium: isPremium(),
+      tier: (subscription?.subscription_tier || 'premium') as SubscriptionTier,
+      status: (subscription?.subscription_status || 'active') as SubscriptionStatus | null,
+      isPremium: true, // FREE-MODE OVERRIDE (was: isPremium())
       daysLeft: daysUntilExpiry(),
-      isTrialing: isTrialing(),
+      isTrialing: false, // FREE-MODE OVERRIDE (was: isTrialing())
     };
   };
 

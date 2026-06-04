@@ -1,16 +1,19 @@
 import React from 'react';
 import { BalanceCard, QuickActions, RecentTransactions } from '@/components/dashboard';
-import { SubscriptionBanner } from '@/components/subscription';
+// FREE-MODE: SubscriptionBanner hidden
+// import { SubscriptionBanner } from '@/components/subscription';
 import { AIInsightsCard } from '@/components/ai';
 import { useBudgetsWithSpending } from '@/hooks/useBudgets';
 import { useBillReminders } from '@/hooks/useBillReminders';
-import { useSubscription } from '@/hooks/useSubscription';
+// FREE-MODE: useSubscription no longer needed on dashboard
+// import { useSubscription } from '@/hooks/useSubscription';
 import { Link } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   const { budgets } = useBudgetsWithSpending();
   const { upcomingBills, overdueBills } = useBillReminders();
-  const { isPremium } = useSubscription();
+  // FREE-MODE: isPremium check removed — features always shown
+  // const { isPremium } = useSubscription();
 
   // Show top 3 budgets by percentage used
   const topBudgets = budgets
@@ -29,14 +32,14 @@ export const DashboardPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Subscription Banner */}
-      <SubscriptionBanner />
+      {/* FREE-MODE: SubscriptionBanner hidden */}
+      {/* <SubscriptionBanner /> */}
 
       {/* Balance Card */}
       <BalanceCard />
 
-      {/* Premium Features Grid */}
-      {isPremium && (
+      {/* Premium Features Grid — FREE-MODE: always shown */}
+      {/* ORIGINAL: {isPremium && ( */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* AI Insights Card */}
           <AIInsightsCard />
@@ -141,7 +144,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           )}
         </div>
-      )}
+      {/* ORIGINAL: )} */}
 
       {/* Quick Actions */}
       <QuickActions />

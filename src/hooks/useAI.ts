@@ -14,7 +14,7 @@ export function useAI(currency: string = 'USD') {
   const [insights, setInsights] = useState<AIInsight[]>([]);
 
   // Check if AI features are available
-  const isAIAvailable = isPremium && !!import.meta.env.VITE_GROQ_API_KEY;
+  const isAIAvailable = isPremium;
 
   /**
    * Analyze spending patterns

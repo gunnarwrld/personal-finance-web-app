@@ -4,7 +4,6 @@
  */
 
 export const GROQ_CONFIG = {
-  apiKey: import.meta.env.VITE_GROQ_API_KEY,
   model: 'mixtral-8x7b-32768', // Fast and capable model for financial analysis
   
   // Model alternatives for different use cases

@@ -3,28 +3,8 @@
  * Handles all AI-powered financial insights using Groq API
  */
 
-import Groq from 'groq-sdk';
+import { supabase } from './supabase';
 import { GROQ_CONFIG, AI_PROMPTS, type GroqModel } from '@/config/groq';
-
-// Initialize Groq client
-let groqClient: Groq | null = null;
-
-export function getGroqClient(): Groq {
-  if (!groqClient) {
-    const apiKey = GROQ_CONFIG.apiKey;
-    
-    if (!apiKey || apiKey === 'your_groq_api_key_here') {
-      throw new Error('Groq API key is not configured. Please add VITE_GROQ_API_KEY to your .env file.');
-    }
-    
-    groqClient = new Groq({
-      apiKey,
-      dangerouslyAllowBrowser: true, // Required for client-side usage
-    });
-  }
-  
-  return groqClient;
-}
 
 // Rate limiting state
 let requestCount = 0;
@@ -64,7 +44,7 @@ export interface AIResponse {
 }
 
 /**
- * Generate AI completion using Groq
+ * Generate AI completion using Supabase Edge Function
  */
 export async function generateCompletion(
   prompt: string,
@@ -73,40 +53,32 @@ export async function generateCompletion(
   try {
     checkRateLimit();
     
-    const client = getGroqClient();
-    const model = options.model 
-      ? GROQ_CONFIG.models[options.model] 
-      : GROQ_CONFIG.model;
-    
-    const response = await client.chat.completions.create({
-      model,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: options.temperature ?? GROQ_CONFIG.temperature,
-      max_tokens: options.maxTokens ?? GROQ_CONFIG.maxTokens,
+    const { data, error } = await supabase.functions.invoke('groq-proxy', {
+      body: {
+        prompt,
+        options: {
+          model: options.model ? GROQ_CONFIG.models[options.model] : GROQ_CONFIG.model,
+          temperature: options.temperature ?? GROQ_CONFIG.temperature,
+          maxTokens: options.maxTokens ?? GROQ_CONFIG.maxTokens,
+        }
+      }
     });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
     
-    const content = response.choices[0]?.message?.content || '';
-    
-    return {
-      content,
-      usage: response.usage ? {
-        promptTokens: response.usage.prompt_tokens,
-        completionTokens: response.usage.completion_tokens,
-        totalTokens: response.usage.total_tokens,
-      } : undefined,
-      model: response.model,
-    };
+    return data as AIResponse;
   } catch (error: any) {
-    console.error('Groq API Error:', error);
+    console.error('Groq API Proxy Error:', error);
     
     // Handle specific error cases
     if (error.message?.includes('API key')) {
-      throw new Error('Invalid Groq API key. Please check your configuration.');
+      throw new Error('Invalid Groq API key on the server. Please check your configuration.');
     }
     
     if (error.status === 429) {

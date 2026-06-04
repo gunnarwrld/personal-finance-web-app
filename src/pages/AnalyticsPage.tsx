@@ -5,12 +5,14 @@ import { SpendingTrendsChart, CategoryBreakdownChart, IncomeExpenseChart } from 
 import { AIInsightsModal } from '@/components/ai';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
-import { useSubscription } from '@/hooks/useSubscription';
+// FREE-MODE: useSubscription no longer needed
+// import { useSubscription } from '@/hooks/useSubscription';
 import type { AnalyticsPeriod } from '@/types';
 
 export const AnalyticsPage: React.FC = () => {
   const { preferences } = useUserPreferences();
-  const { isPremium } = useSubscription();
+  // FREE-MODE: isPremium check removed
+  // const { isPremium } = useSubscription();
   const [period, setPeriod] = useState<AnalyticsPeriod>('monthly');
   const [showAIModal, setShowAIModal] = useState(false);
   const displayCurrency = preferences?.display_currency || 'USD';
@@ -96,8 +98,8 @@ export const AnalyticsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          {isPremium && (
-            <>
+          {/* FREE-MODE: AI & Export buttons always shown */}
+          {/* ORIGINAL: {isPremium && ( */}
               <Button
                 onClick={() => setShowAIModal(true)}
                 variant="primary"
@@ -113,8 +115,7 @@ export const AnalyticsPage: React.FC = () => {
               >
                 Export
               </Button>
-            </>
-          )}
+          {/* ORIGINAL: )} */}
         </div>
       </div>
 
@@ -252,7 +253,8 @@ export const AnalyticsPage: React.FC = () => {
         </>
       )}
 
-      {/* Premium Upgrade Prompt */}
+      {/* FREE-MODE: Premium Upgrade Prompt hidden */}
+      {/* ORIGINAL:
       {!isPremium && (
         <Card className="border-2 border-yellow-500 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20">
           <CardContent className="pt-6">
@@ -270,6 +272,7 @@ export const AnalyticsPage: React.FC = () => {
           </CardContent>
         </Card>
       )}
+      */}
 
       {/* AI Insights Modal */}
       <AIInsightsModal 
