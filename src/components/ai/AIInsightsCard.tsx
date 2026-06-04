@@ -4,18 +4,21 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// FREE-MODE: useNavigate no longer needed (was used by premium upsell CTA)
+// import { useNavigate } from 'react-router-dom';
 import { Sparkles, TrendingUp, Lightbulb, AlertCircle, Loader2, X } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAI } from '@/hooks/useAI';
 import { useTransactions } from '@/hooks/useTransactions';
-import { useSubscription } from '@/hooks/useSubscription';
+// FREE-MODE: useSubscription no longer needed here
+// import { useSubscription } from '@/hooks/useSubscription';
 
 export function AIInsightsCard() {
-  const { isPremium } = useSubscription();
+  // FREE-MODE: isPremium check removed
+  // const { isPremium } = useSubscription();
   const { transactions } = useTransactions();
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // FREE-MODE: unused
   const { 
     insights, 
     isAIAvailable, 
@@ -50,36 +53,8 @@ export function AIInsightsCard() {
     }
   };
 
-  if (!isPremium) {
-    return (
-      <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              AI Financial Insights
-            </h3>
-            <span className="ml-auto text-xs font-semibold px-2 py-1 rounded-full bg-purple-600 text-white">
-              PREMIUM
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Get personalized financial advice, spending analysis, and savings recommendations powered by AI.
-          </p>
-          <Button
-            variant="primary"
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-            leftIcon={<Sparkles className="h-4 w-4" />}
-            onClick={() => navigate('/settings')}
-          >
-            Upgrade to Access AI Insights
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  // FREE-MODE: Premium upsell card removed — AI always accessible
+  // ORIGINAL: if (!isPremium) { return ( ... upgrade CTA ... ); }
 
   if (!isAIAvailable) {
     return (
