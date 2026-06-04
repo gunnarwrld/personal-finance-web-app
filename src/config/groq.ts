@@ -4,12 +4,12 @@
  */
 
 export const GROQ_CONFIG = {
-  model: 'mixtral-8x7b-32768', // Fast and capable model for financial analysis
+  model: 'llama-3.3-70b-versatile', // Fast and capable model for financial analysis
   
   // Model alternatives for different use cases
   models: {
-    fast: 'mixtral-8x7b-32768',      // Quick responses
-    balanced: 'llama3-70b-8192',     // Best quality/speed balance
+    fast: 'llama-3.1-8b-instant',      // Quick responses
+    balanced: 'llama-3.3-70b-versatile',     // Best quality/speed balance
     creative: 'llama-3.1-70b-versatile', // More creative responses
   },
   

@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
 
     const response = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      model: options?.model || 'mixtral-8x7b-32768',
+      model: options?.model || 'llama-3.3-70b-versatile',
       temperature: options?.temperature ?? 0.7,
       max_tokens: maxTokens,
     });
