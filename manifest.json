@@ -10,7 +10,7 @@
   "scope": "/",
   "icons": [
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iNDAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiAvPgo8cGF0aCBkPSJNNjAgNzhoNzJNNjAgOTZoNTRNNjAgMTE0aDM2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgLz4KPGNpcmNsZSBjeD0iMTMyIiBjeT0iNjAiIHI9IjEyIiBmaWxsPSJ3aGl0ZSIgLz4KPGRMZWZ0Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50IiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzhCNUNGNiIgLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjM0I4MkY2IiAvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+Cjwvc3ZnPgo=",
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iNDAiIGZpbGw9InVybCgjZ3JhZGllbnQpIiAvPgo8cGF0aCBkPSJNNjAgNzhoNzJNNjAgOTZoNTRNNjAgMTE0aDM2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgLz4KPGNpcmNsZSBjeD0iMTMyIiBjeT0iNjAiIHI9IjEyIiBmaWxsPSJ3aGl0ZSIgLz4KPGRlZnM+CjxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgo8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjOEI1Q0Y2IiAvPgo8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMzQjgyRjYiIC8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPC9zdmc+Cg==",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
@@ -22,35 +22,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["finance", "productivity", "business"],
-  "screenshots": [
-    {
-      "src": "/screenshot-narrow.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "/screenshot-wide.png", 
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Add Transaction",
-      "short_name": "Add Transaction", 
-      "description": "Quickly add a new transaction",
-      "url": "/?action=add-transaction",
-      "icons": [{"src": "/icons/transaction-icon.png", "sizes": "96x96"}]
-    },
-    {
-      "name": "View Accounts",
-      "short_name": "Accounts",
-      "description": "View all your accounts",
-      "url": "/?screen=accounts",
-      "icons": [{"src": "/icons/accounts-icon.png", "sizes": "96x96"}]
-    }
-  ]
+  "categories": ["finance", "productivity", "business"]
 }
