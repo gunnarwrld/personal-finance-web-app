@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, TrendingUp, PiggyBank, Globe } from 'lucide-react';
-import { GoogleSignInButton } from '@/components/auth';
+import { GoogleSignInButton, EmailAuthForm } from '@/components/auth';
 import { useAuth } from '@/hooks/useAuth';
 
 export const AuthPage: React.FC = () => {
@@ -104,11 +104,24 @@ export const AuthPage: React.FC = () => {
                   Sign in to access your financial dashboard
                 </p>
 
-                {/* Google Sign In Button */}
-                <div className="space-y-4">
+                {/* Auth Forms */}
+                <div className="space-y-6">
+                  <EmailAuthForm />
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">
+                        Or continue with
+                      </span>
+                    </div>
+                  </div>
+
                   <GoogleSignInButton />
 
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-6">
                     By signing in, you agree to our Terms of Service and Privacy Policy
                   </p>
                 </div>
