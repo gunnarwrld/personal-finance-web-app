@@ -1,5 +1,5 @@
-import Groq from 'npm:groq-sdk';
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import Groq from 'https://esm.sh/groq-sdk@0.3.2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 // ─────────────────────────────────────────────────────────────
 // Rate-limit configuration
