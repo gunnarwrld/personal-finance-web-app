@@ -5,12 +5,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 // Rate-limit configuration
 // ─────────────────────────────────────────────────────────────
 const RATE_LIMIT = {
-  /** Max requests a single user can make per window */
-  maxRequestsPerWindow: 10,
+  /** Max requests a single user can make per window (strict 5 RPM to prevent a single user from exhausting global pool) */
+  maxRequestsPerWindow: 5,
   /** Window duration in milliseconds (1 minute) */
   windowMs: 60_000,
-  /** Max requests across ALL users per window (global safety net) */
-  globalMaxPerWindow: 200,
+  /** Max requests across ALL users per window (safe margin below Groq's 30 RPM global limit) */
+  globalMaxPerWindow: 25,
   /** Global window duration in milliseconds (1 minute) */
   globalWindowMs: 60_000,
 };
