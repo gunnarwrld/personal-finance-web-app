@@ -11,6 +11,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAI } from '@/hooks/useAI';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useToast } from '@/hooks/useToast';
 // FREE-MODE: useSubscription no longer needed here
 // import { useSubscription } from '@/hooks/useSubscription';
 
@@ -22,18 +23,19 @@ export function AIInsightsCard() {
   const { 
     insights, 
     isAIAvailable, 
-    analyzeSpending, 
+    analyzeSpendingAsync,
     isAnalyzingSpending,
-    findSavings,
+    findSavingsAsync,
     isFindingSavings,
     clearInsights 
   } = useAI('USD'); // You can make currency dynamic
 
   const [selectedInsight, setSelectedInsight] = useState<number>(0);
 
-  const handleAnalyzeSpending = () => {
+  const { error: showError } = useToast();
+
+  const handleAnalyzeSpending = async () => {
     if (transactions && transactions.length > 0) {
-      // Get last 30 days of transactions
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
@@ -42,14 +44,24 @@ export function AIInsightsCard() {
       );
       
       if (recentTransactions.length > 0) {
-        analyzeSpending(recentTransactions);
+        try {
+          await analyzeSpendingAsync(recentTransactions);
+        } catch (err: any) {
+          showError(err.message || 'Failed to analyze spending');
+        }
+      } else {
+        showError('No transactions found in the last 30 days');
       }
     }
   };
 
-  const handleFindSavings = () => {
+  const handleFindSavings = async () => {
     if (transactions && transactions.length > 0) {
-      findSavings(transactions.slice(0, 50)); // Last 50 transactions
+      try {
+        await findSavingsAsync(transactions.slice(0, 50));
+      } catch (err: any) {
+        showError(err.message || 'Failed to find savings');
+      }
     }
   };
 
