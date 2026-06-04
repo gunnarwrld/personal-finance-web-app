@@ -46,3 +46,46 @@ export const signInWithGoogle = async () => {
   if (error) throw error;
   return data;
 };
+
+// Helper to sign in with Email/Password
+export const signInWithEmail = async (email: string, password?: string) => {
+  if (password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data;
+  } else {
+    return signInWithOtp(email);
+  }
+};
+
+// Helper to sign up with Email/Password
+export const signUpWithEmail = async (email: string, password?: string) => {
+  if (password) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      }
+    });
+    if (error) throw error;
+    return data;
+  } else {
+    return signInWithOtp(email);
+  }
+};
+
+// Helper to sign in with Magic Link (OTP)
+export const signInWithOtp = async (email: string) => {
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${window.location.origin}/dashboard`,
+    },
+  });
+  if (error) throw error;
+  return data;
+};
