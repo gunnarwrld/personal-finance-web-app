@@ -65,11 +65,23 @@ export async function generateCompletion(
     });
 
     if (error) {
+      if (error instanceof Error && error.name === 'FunctionsHttpError') {
+        // Try to extract the custom JSON error we return from the Edge Function
+        try {
+          const bodyText = await (error as any).context.text();
+          const bodyJson = JSON.parse(bodyText);
+          if (bodyJson.error) {
+            throw new Error(bodyJson.error);
+          }
+        } catch (e) {
+          // Ignore JSON parse errors, fallback to throwing the original error
+        }
+      }
       throw error;
     }
 
-    if (data.error) {
-      throw new Error(data.error);
+    if (!data?.content) {
+      throw new Error(data?.error || 'No content received from Edge Function');
     }
     
     return data as AIResponse;
