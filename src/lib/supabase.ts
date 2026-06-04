@@ -47,6 +47,23 @@ export const signInWithGoogle = async () => {
   return data;
 };
 
+// Helper to sign in with Apple
+export const signInWithApple = async () => {
+  const isDevelopment = window.location.hostname === 'localhost';
+  const redirectUrl = isDevelopment 
+    ? `http://localhost:${window.location.port}/dashboard`
+    : `${window.location.origin}/dashboard`;
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'apple',
+    options: {
+      redirectTo: redirectUrl,
+    },
+  });
+  if (error) throw error;
+  return data;
+};
+
 // Helper to sign in with Email/Password
 export const signInWithEmail = async (email: string, password?: string) => {
   if (password) {

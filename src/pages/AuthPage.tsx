@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, TrendingUp, PiggyBank, Globe } from 'lucide-react';
-import { GoogleSignInButton, EmailAuthForm } from '@/components/auth';
+import { GoogleSignInButton, EmailAuthForm, AppleSignInButton } from '@/components/auth';
 import { useAuth } from '@/hooks/useAuth';
 
 export const AuthPage: React.FC = () => {
@@ -119,7 +119,10 @@ export const AuthPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <GoogleSignInButton />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <GoogleSignInButton />
+                    <AppleSignInButton />
+                  </div>
 
                   <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-6">
                     By signing in, you agree to our Terms of Service and Privacy Policy
