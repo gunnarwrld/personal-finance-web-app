@@ -83,21 +83,23 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
     if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized — invalid or expired token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Unauthorized: ${authError?.message || 'Invalid token'}` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -110,11 +112,10 @@ Deno.serve(async (req) => {
           error: `Rate limit exceeded. Try again in ${retryAfterSec} seconds.`,
         }),
         {
-          status: 429,
+          status: 200,
           headers: {
             ...corsHeaders,
             'Content-Type': 'application/json',
-            'Retry-After': String(retryAfterSec),
           },
         }
       );
@@ -125,7 +126,7 @@ Deno.serve(async (req) => {
     if (!prompt || typeof prompt !== 'string') {
       return new Response(
         JSON.stringify({ error: 'A non-empty "prompt" string is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -135,7 +136,10 @@ Deno.serve(async (req) => {
     // ── Call Groq ────────────────────────────────────────────
     const apiKey = Deno.env.get('GROQ_API_KEY');
     if (!apiKey) {
-      throw new Error('GROQ_API_KEY environment variable is not set');
+      return new Response(
+        JSON.stringify({ error: 'GROQ_API_KEY environment variable is not set' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const groq = new Groq({ apiKey });
