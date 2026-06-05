@@ -62,6 +62,36 @@ export function useAuth() {
     }
   };
 
+  const signInWithEmail = async (email: string, password?: string) => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      const { signInWithEmail: signInWithEmailFn } = await import('@/lib/supabase');
+      await signInWithEmailFn(email, password);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sign in';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password?: string) => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      const { signUpWithEmail: signUpWithEmailFn } = await import('@/lib/supabase');
+      await signUpWithEmailFn(email, password);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sign up';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       setError(null);
@@ -84,6 +114,8 @@ export function useAuth() {
     error,
     isAuthenticated: !!user,
     signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
     signOut,
   };
 }
