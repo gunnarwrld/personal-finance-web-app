@@ -62,6 +62,21 @@ export function useAuth() {
     }
   };
 
+  const signInWithApple = async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      const { signInWithApple: signInWithAppleFn } = await import('@/lib/supabase');
+      await signInWithAppleFn();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sign in';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signInWithEmail = async (email: string, password?: string) => {
     try {
       setError(null);
@@ -114,6 +129,7 @@ export function useAuth() {
     error,
     isAuthenticated: !!user,
     signInWithGoogle,
+    signInWithApple,
     signInWithEmail,
     signUpWithEmail,
     signOut,
