@@ -45,6 +45,7 @@ export function AIInsightsCard() {
     if (transactions && transactions.length > 0) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0); // dates parse as local midnight
       
       const recentTransactions = transactions.filter(
         (t) => parseLocalDate(t.date) >= thirtyDaysAgo
