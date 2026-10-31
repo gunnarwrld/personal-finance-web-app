@@ -10,7 +10,7 @@
 - ✅ Multi-account management with currency support
 - ✅ Transaction tracking (income/expenses)
 - ✅ Real-time currency conversion
-- ✅ Google OAuth authentication
+- ✅ Email/password, magic link and Google authentication
 - ✅ Progressive Web App (installable)
 - ✅ Responsive design with Tailwind CSS
 
@@ -60,7 +60,7 @@
 VITE_SUPABASE_URL=<your-supabase-project-url>
 VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key> (secured ✅)
 VITE_STRIPE_PUBLIC_KEY=<your-stripe-public-key> (secured ✅)
-VITE_GROQ_API_KEY=<your-groq-api-key> (secured ✅)
+GROQ_API_KEY=<your-groq-api-key> (Supabase secret, not bundled ✅)
 ```
 
 ### Premium Account Status
@@ -70,7 +70,7 @@ VITE_GROQ_API_KEY=<your-groq-api-key> (secured ✅)
 - **Expires**: 2099-12-31
 
 ### AI Configuration
-- **Models**: mixtral-8x7b-32768, llama3-70b-8192, llama-3.1-70b-versatile
+- **Models**: llama-3.3-70b-versatile (default), llama-3.1-8b-instant
 - **Rate Limits**: 30 req/min, 14,400 req/day
 - **Features**: All 5 insight types enabled
 

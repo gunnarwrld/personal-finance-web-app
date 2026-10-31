@@ -12,7 +12,7 @@ FinanceTracker is a full-featured personal finance web application built with Re
 - **Multi-Account Management** — Track multiple bank accounts, wallets, and cards
 - **Transaction Tracking** — Record income and expenses with categories
 - **Multi-Currency Support** — 8 currencies with live exchange rates via Frankfurter API
-- **Google OAuth** — Secure, passwordless authentication via Supabase Auth
+- **Sign-in options** — Email + password, magic link, and Google via Supabase Auth (Apple appears automatically once it is enabled in Supabase)
 - **Dashboard** — At-a-glance financial overview with recent transactions
 - **Progressive Web App** — Installable on mobile and desktop with offline support
 - **Dark Mode** — System-aware theme with manual toggle
@@ -35,11 +35,11 @@ FinanceTracker is a full-featured personal finance web application built with Re
 | **State Management** | TanStack React Query (server state), Zustand (client state) |
 | **Routing** | React Router v6 |
 | **Charts** | Recharts |
-| **Forms** | React Hook Form + Zod validation |
+| **Forms** | Zod validation |
 | **Build** | Vite + vite-plugin-pwa |
 | **Backend/DB** | Supabase (PostgreSQL + Auth + Edge Functions + RLS) |
 | **Payments** | Stripe (Checkout, Customer Portal, Webhooks via Edge Functions) |
-| **AI** | Groq API (mixtral-8x7b, llama3-70b, llama-3.1-70b) |
+| **AI** | Groq (`llama-3.3-70b-versatile`, `llama-3.1-8b-instant`) via the `groq-proxy` Edge Function |
 | **Currency Rates** | Frankfurter API (free, no key required) |
 
 ## Architecture
@@ -59,7 +59,14 @@ FinanceTracker is a full-featured personal finance web application built with Re
     └─────────┘              └───────────────┘
 ```
 
-The app is a **client-side SPA** — there is no custom backend server. All server-side logic (Stripe checkout, webhooks, portal sessions) runs as **Supabase Edge Functions** (Deno). The frontend communicates with Supabase directly using the JS client with Row Level Security (RLS) enforcing data isolation per user.
+The app is a **client-side SPA** — there is no custom backend server. Server-side logic runs as **Supabase Edge Functions** (Deno) and Postgres functions:
+
+- `groq-proxy` — authenticated, rate-limited proxy to Groq; the Groq key never reaches the browser
+- `refresh-currency-rates` — fetches ECB rates (Frankfurter) and stores them; clients can only read `currency_rates`
+- `create_transaction` / `update_transaction` / `delete_transaction` / `create_account_transfer` / `delete_account_transfer` — Postgres functions that write a ledger row and adjust account balances in one transaction
+- `handle_new_user` — trigger that creates a user's preference rows at signup
+
+The frontend talks to Supabase directly with Row Level Security (RLS) enforcing per-user isolation. Stripe checkout/portal/webhook functions are documented in `docs/STRIPE_SETUP.md` but not deployed while the app runs in free mode.
 
 ## Setup Instructions
 
@@ -92,17 +99,24 @@ npm install
 
 ### 4. Run database migrations
 
-In your Supabase SQL Editor, run the migration files from `database_migrations/` in order:
-- `006_notifications.sql` — Creates notifications and notification_preferences tables with RLS
+All schema changes live in `supabase/migrations/` and build the full schema from scratch:
 
-> **Note**: Core tables (accounts, transactions, user_preferences, user_subscriptions, currency_rates) should already exist in your Supabase project. If setting up from scratch, you'll need to create them — see the database schema types in `src/types/database.types.ts`.
+```bash
+supabase link --project-ref <your-project-ref>
+supabase db push
+```
+
+For a local database, `supabase start` followed by `supabase db reset` applies the same files. After changing the schema, regenerate the types with `supabase gen types typescript --linked > src/types/database.types.ts`.
 
 ### 5. Deploy Supabase Edge Functions
 
-See [docs/STRIPE_SETUP.md](docs/STRIPE_SETUP.md) for detailed instructions on deploying:
-- `create-checkout-session` — Creates Stripe Checkout sessions
-- `create-portal-session` — Creates Stripe Customer Portal sessions
-- `stripe-webhooks` — Handles Stripe webhook events
+```bash
+supabase secrets set GROQ_API_KEY=<your-groq-api-key>
+supabase functions deploy groq-proxy --no-verify-jwt
+supabase functions deploy refresh-currency-rates --no-verify-jwt
+```
+
+Both functions check the caller's session themselves (`--no-verify-jwt` matches `supabase/config.toml`). For payments, see [docs/STRIPE_SETUP.md](docs/STRIPE_SETUP.md) for the `create-checkout-session`, `create-portal-session` and `stripe-webhooks` functions.
 
 ### 6. Start the dev server
 
@@ -121,13 +135,13 @@ The app will be available at `http://localhost:5173`.
 | `VITE_STRIPE_PUBLIC_KEY` | ⚠️ | Stripe publishable key (`pk_test_...` or `pk_live_...`). Required for payments. |
 | `VITE_STRIPE_MONTHLY_PRICE_ID` | ⚠️ | Stripe Price ID for the monthly plan. Required for payments. |
 | `VITE_STRIPE_YEARLY_PRICE_ID` | ⚠️ | Stripe Price ID for the yearly plan. Required for payments. |
-| `VITE_GROQ_API_KEY` | ⚠️ | Groq API key for AI features. Required for AI insights. |
-| `VITE_CURRENCY_API_URL` | ❌ | Currency API URL (optional — app uses Frankfurter API as default) |
 | `VITE_APP_NAME` | ❌ | App display name (default: `FinanceTracker`) |
 | `VITE_APP_VERSION` | ❌ | App version (default: `2.0.0`) |
 | `VITE_APP_URL` | ❌ | App URL for Stripe redirects (default: `window.location.origin`) |
 
 > ⚠️ = Required for that specific feature to work. The app will still load without them.
+
+The Groq key is **not** a `VITE_` variable: anything prefixed `VITE_` is bundled into the browser. Set it as a Supabase secret (`GROQ_API_KEY`, see step 5).
 
 ## Payment Setup (Stripe)
 
@@ -192,7 +206,6 @@ personal-finance-web-app/
 │   ├── App.tsx              # Router and route definitions
 │   ├── main.tsx             # Entry point with React Query provider
 │   └── index.css            # Tailwind directives and global styles
-├── database_migrations/     # SQL migration files for Supabase
 ├── docs/                    # Additional documentation
 │   └── STRIPE_SETUP.md      # Stripe integration guide
 ├── .env.example             # Environment variable template
@@ -206,9 +219,8 @@ personal-finance-web-app/
 
 ## Known Limitations
 
-- **No email/password auth** — Only Google OAuth is supported
 - **No server-side rendering** — Pure client-side SPA
-- **Groq API key exposed in frontend** — The `VITE_GROQ_API_KEY` is bundled client-side. For production, consider proxying AI requests through a Supabase Edge Function to keep the key server-side.
+- **Apple sign-in needs configuring** — Enable the Apple provider in Supabase (Authentication → Providers) to show the button
 - **No automated recurring transaction processing** — Recurring transactions need to be triggered manually (a cron job or scheduled function would be needed for full automation)
 - **Limited to 8 currencies** — USD, EUR, GBP, JPY, CNY, SEK, AUD, CAD
 - **No bank sync** — Manual transaction entry only (no Plaid/Teller integration)
@@ -229,8 +241,11 @@ npm run type-check # TypeScript type checking only
 The app is configured for deployment on **Vercel**:
 - Build command: `npm run build`
 - Output directory: `dist`
+- `vercel.json` rewrites app routes (`/dashboard`, `/settings`, …) to `index.html` so deep links and OAuth / magic-link redirects load the app instead of a 404
 - Set all `VITE_*` environment variables in your Vercel dashboard
+- In Supabase → Authentication → URL Configuration, set the Site URL to your production domain and allow `https://<your-domain>/**` as a redirect URL
 - Configure Google OAuth redirect URLs in both Supabase and Google Cloud Console to include your production domain
+- Roll out schema changes before the frontend that depends on them: `supabase db push`, deploy Edge Functions, then merge/deploy
 
 ## Security
 
