@@ -3,8 +3,11 @@
  * Handles all AI-powered financial insights using Groq API
  */
 
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { convertCurrency } from './currency';
 import { GROQ_CONFIG, AI_PROMPTS, type GroqModel } from '@/config/groq';
+import type { Transaction } from '@/types';
 
 // Rate limiting state
 let requestCount = 0;
@@ -25,6 +28,33 @@ function checkRateLimit() {
   }
   
   requestCount++;
+}
+
+/** The only transaction fields sent to the AI provider. */
+export interface AITransaction {
+  date: string;
+  description: string;
+  category: string;
+  type: 'income' | 'expense';
+  amount: number;
+}
+
+/**
+ * Strip ids and other account details before transactions leave the app,
+ * and convert every amount into one currency so totals add up.
+ */
+export function toAITransactions(
+  transactions: Transaction[],
+  currency: string,
+  rates: Record<string, number>
+): AITransaction[] {
+  return transactions.map((t) => ({
+    date: t.date,
+    description: t.description,
+    category: t.category || 'Uncategorized',
+    type: t.type,
+    amount: Math.round(convertCurrency(Math.abs(t.amount), t.currency || currency, currency, rates) * 100) / 100,
+  }));
 }
 
 export interface AIRequestOptions {
@@ -65,17 +95,11 @@ export async function generateCompletion(
     });
 
     if (error) {
-      if (error instanceof Error && error.name === 'FunctionsHttpError') {
-        // Try to extract the custom JSON error we return from the Edge Function
-        try {
-          const bodyText = await (error as any).context.text();
-          const bodyJson = JSON.parse(bodyText);
-          if (bodyJson.error) {
-            throw new Error(bodyJson.error);
-          }
-        } catch (e) {
-          // Ignore JSON parse errors, fallback to throwing the original error
-        }
+      // Non-2xx responses carry {"error": "..."} from the function; surface
+      // that message instead of the generic "non-2xx status code" one.
+      if (error instanceof FunctionsHttpError) {
+        const body = await error.context.json().catch(() => null);
+        throw new Error(body?.error || 'AI service request failed');
       }
       throw error;
     }
@@ -85,23 +109,15 @@ export async function generateCompletion(
     }
     
     return data as AIResponse;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Groq API Proxy Error:', error);
-    
-    // Handle specific error cases
-    if (error.message?.includes('API key')) {
+    const message = error instanceof Error ? error.message : '';
+
+    if (message.includes('API key')) {
       throw new Error('Invalid Groq API key on the server. Please check your configuration.');
     }
-    
-    if (error.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again in a moment.');
-    }
-    
-    if (error.status === 500) {
-      throw new Error('AI service temporarily unavailable. Please try again later.');
-    }
-    
-    throw new Error(error.message || 'Failed to generate AI insights. Please try again.');
+
+    throw new Error(message || 'Failed to generate AI insights. Please try again.');
   }
 }
 
@@ -109,21 +125,22 @@ export async function generateCompletion(
  * Analyze spending patterns
  */
 export async function analyzeSpendingPatterns(
-  transactions: any[],
+  transactions: AITransaction[],
   currency: string,
   options?: AIRequestOptions
 ): Promise<string> {
+  const expenses = transactions.filter((t) => t.type === 'expense');
+  const dates = expenses.map((t) => t.date).sort();
   const data = {
-    totalTransactions: transactions.length,
-    totalAmount: transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0),
-    categories: transactions.reduce((acc, t) => {
-      const cat = t.category || 'Uncategorized';
-      acc[cat] = (acc[cat] || 0) + Math.abs(t.amount);
+    totalTransactions: expenses.length,
+    totalSpent: Math.round(expenses.reduce((sum, t) => sum + t.amount, 0) * 100) / 100,
+    categories: expenses.reduce((acc, t) => {
+      acc[t.category] = Math.round(((acc[t.category] || 0) + t.amount) * 100) / 100;
       return acc;
     }, {} as Record<string, number>),
     dateRange: {
-      from: transactions[0]?.transaction_date,
-      to: transactions[transactions.length - 1]?.transaction_date,
+      from: dates[0],
+      to: dates[dates.length - 1],
     },
   };
   
@@ -150,7 +167,7 @@ export async function generateBudgetRecommendations(
  * Predict upcoming expenses
  */
 export async function predictUpcomingExpenses(
-  historicalData: any[],
+  historicalData: AITransaction[],
   currency: string,
   options?: AIRequestOptions
 ): Promise<string> {
@@ -183,7 +200,7 @@ export async function getFinancialAdvice(
  * Find savings opportunities
  */
 export async function findSavingsOpportunities(
-  transactions: any[],
+  transactions: AITransaction[],
   currency: string,
   options?: AIRequestOptions
 ): Promise<string> {

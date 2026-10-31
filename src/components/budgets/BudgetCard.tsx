@@ -2,11 +2,13 @@ import type { BudgetWithSpending } from '@/types';
 
 interface BudgetCardProps {
   budget: BudgetWithSpending;
+  /** The user's display currency; budget amounts are set in it. */
+  currency?: string;
   onEdit?: (budget: BudgetWithSpending) => void;
   onDelete?: (id: number) => void;
 }
 
-export function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
+export function BudgetCard({ budget, currency = 'USD', onEdit, onDelete }: BudgetCardProps) {
   const getProgressColor = () => {
     if (budget.isOverBudget) return 'bg-red-500';
     if (budget.percentage >= 90) return 'bg-orange-500';
@@ -29,7 +31,7 @@ export function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD', // Default to USD for budgets
+      currency,
     }).format(amount);
   };
 

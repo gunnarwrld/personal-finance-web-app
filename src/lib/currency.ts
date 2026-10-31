@@ -15,7 +15,9 @@ export const CURRENCIES: Currency[] = [
 // Export supported currency codes
 export const SUPPORTED_CURRENCIES = CURRENCIES.map(c => c.code);
 
-// Fallback exchange rates (used when API is unavailable)
+// Fallback exchange rates (used until the stored rates have loaded, or if
+// none have ever been stored). Live rates come from the
+// refresh-currency-rates edge function.
 export const FALLBACK_RATES: Record<string, number> = {
   USD: 1.0,
   EUR: 0.85,
@@ -25,39 +27,6 @@ export const FALLBACK_RATES: Record<string, number> = {
   SEK: 10.87,
   AUD: 1.35,
   CAD: 1.25,
-};
-
-/**
- * Fetch current exchange rates from Frankfurter API (Free, no API key needed)
- * Frankfurter uses EUR as base, so we'll convert to USD base
- */
-export const fetchExchangeRates = async (): Promise<Record<string, number>> => {
-  try {
-    // Frankfurter API - completely free, open source, updated daily by ECB
-    const response = await fetch('https://api.frankfurter.app/latest?from=USD');
-    
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Frankfurter returns rates with USD as base, which is what we need
-    if (data.rates && typeof data.rates === 'object') {
-      // Add USD itself to the rates
-      const rates: Record<string, number> = {
-        USD: 1.0,
-        ...data.rates,
-      };
-      
-      return rates;
-    }
-
-    throw new Error('Invalid exchange rate response format');
-  } catch (error) {
-    console.error('Failed to fetch exchange rates, using fallback:', error);
-    return FALLBACK_RATES;
-  }
 };
 
 /**
@@ -82,7 +51,9 @@ export const convertCurrency = (
 };
 
 /**
- * Format currency amount with symbol
+ * Format currency amount with symbol. Negative amounts keep their sign
+ * (an overdrawn account must not look like it has money in it); pass
+ * Math.abs(amount) where the sign is shown separately.
  */
 export const formatCurrency = (amount: number, currencyCode: string): string => {
   const currency = CURRENCIES.find(c => c.code === currencyCode);
@@ -94,7 +65,7 @@ export const formatCurrency = (amount: number, currencyCode: string): string => 
     maximumFractionDigits: 2,
   }).format(Math.abs(amount));
 
-  return `${symbol}${formatted}`;
+  return `${amount < 0 ? '-' : ''}${symbol}${formatted}`;
 };
 
 /**

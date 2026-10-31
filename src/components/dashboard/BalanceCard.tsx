@@ -3,38 +3,25 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Select } from '@/components/ui';
 import { useAccounts } from '../../hooks/useAccounts';
-import { formatCurrency } from '@/lib/currency';
-
-type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'SEK';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { convertCurrency, formatCurrency, SUPPORTED_CURRENCIES } from '@/lib/currency';
 
 export function BalanceCard() {
   const [showBalance, setShowBalance] = useState(true);
-  const [currency, setCurrency] = useState<CurrencyCode>('USD');
+  const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
   const { accounts, isLoading } = useAccounts();
+  const { rates } = useCurrency();
+  const { preferences } = useUserPreferences();
 
-  // Calculate total balance in selected currency
-  const totalBalance = accounts.reduce((sum, account) => {
-    // Simple conversion (in a real app, you'd use live exchange rates)
-    let amount = account.balance;
-    
-    if (account.currency !== currency) {
-      // Basic conversion rates (USD as base)
-      const rates: Record<CurrencyCode, number> = {
-        USD: 1,
-        EUR: 0.92,
-        GBP: 0.79,
-        JPY: 149.50,
-        SEK: 10.50,
-      };
-      
-      // Convert to USD first, then to target currency
-      const accountCurrency = account.currency as CurrencyCode;
-      const inUSD = amount / (rates[accountCurrency] || 1);
-      amount = inUSD * rates[currency];
-    }
-    
-    return sum + amount;
-  }, 0);
+  // Default to the currency chosen in Settings until the user picks another.
+  const currency = selectedCurrency || preferences?.display_currency || 'USD';
+
+  // Convert every account with the stored exchange rates (USD-based).
+  const totalBalance = accounts.reduce(
+    (sum, account) => sum + convertCurrency(account.balance, account.currency, currency, rates),
+    0
+  );
 
   if (isLoading) {
     return (
@@ -70,18 +57,14 @@ export function BalanceCard() {
           </div>
         </div>
 
-        <Select
-          value={currency}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCurrency(e.target.value as CurrencyCode)}
-          options={[
-            { value: 'USD', label: 'USD' },
-            { value: 'EUR', label: 'EUR' },
-            { value: 'GBP', label: 'GBP' },
-            { value: 'JPY', label: 'JPY' },
-            { value: 'SEK', label: 'SEK' },
-          ]}
-          className="w-24"
-        />
+        <div className="w-28 flex-shrink-0">
+          <Select
+            value={currency}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedCurrency(e.target.value)}
+            options={SUPPORTED_CURRENCIES.map((code) => ({ value: code, label: code }))}
+            aria-label="Display currency"
+          />
+        </div>
       </div>
 
       <div className="flex gap-4 text-sm">

@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRecurringTransactions } from '@/hooks/useRecurringTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
+import { getExpenseCategories, getIncomeCategories } from '@/lib/categories';
+import { toLocalDateString } from '@/lib/utils';
 import type { RecurringTransactionWithAccount, RecurringFrequency } from '@/types';
 
 interface RecurringTransactionModalProps {
@@ -10,9 +13,10 @@ interface RecurringTransactionModalProps {
 }
 
 export function RecurringTransactionModal({ transaction, onClose }: RecurringTransactionModalProps) {
-  const { createRecurring, updateRecurring } = useRecurringTransactions();
+  const { createRecurringAsync, updateRecurringAsync } = useRecurringTransactions();
   const { accounts } = useAccounts();
   const { user } = useAuth();
+  const { error: showError } = useToast();
 
   const [formData, setFormData] = useState({
     account_id: transaction?.account_id || (accounts[0]?.id || 0),
@@ -21,15 +25,24 @@ export function RecurringTransactionModal({ transaction, onClose }: RecurringTra
     amount: transaction?.amount || 0,
     description: transaction?.description || '',
     frequency: transaction?.frequency || ('monthly' as RecurringFrequency),
-    start_date: transaction?.start_date ? transaction.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
+    start_date: transaction?.start_date ? transaction.start_date.split('T')[0] : toLocalDateString(),
     end_date: transaction?.end_date ? transaction.end_date.split('T')[0] : '',
     auto_create: transaction?.auto_create ?? true,
   });
 
+  // Same category names as one-off transactions, so generated entries line
+  // up with budgets and analytics.
   const categories = {
-    expense: ['Food & Dining', 'Shopping', 'Transportation', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Travel', 'Education', 'Personal Care', 'Other'],
-    income: ['Salary', 'Freelance', 'Investment', 'Rental Income', 'Business', 'Gift', 'Refund', 'Other'],
+    expense: getExpenseCategories(),
+    income: getIncomeCategories(),
   };
+
+  // Accounts may still be loading when the modal opens.
+  useEffect(() => {
+    if (!formData.account_id && accounts.length > 0) {
+      setFormData((prev) => (prev.account_id ? prev : { ...prev, account_id: accounts[0].id }));
+    }
+  }, [accounts, formData.account_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,31 +50,31 @@ export function RecurringTransactionModal({ transaction, onClose }: RecurringTra
     if (!user) return;
 
     try {
-      const startDate = new Date(formData.start_date);
-      
+      // Dates are date columns: send the picked days as-is. Editing other
+      // fields must not reset the schedule, so next_occurrence only follows
+      // the start date when it is new or was changed.
+      const startDateChanged = !transaction || transaction.start_date.split('T')[0] !== formData.start_date;
       const data = {
         ...formData,
         user_id: user.id,
-        start_date: startDate.toISOString(),
-        end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
-        next_occurrence: startDate.toISOString(), // Next occurrence starts at start date
+        end_date: formData.end_date || null,
+        next_occurrence: startDateChanged ? formData.start_date : transaction.next_occurrence,
       };
 
       if (transaction) {
-        await updateRecurring({ id: transaction.id, updates: data });
+        await updateRecurringAsync({ id: transaction.id, updates: data });
       } else {
-        await createRecurring(data);
+        await createRecurringAsync(data);
       }
       onClose();
     } catch (error) {
-      console.error('Failed to save recurring transaction:', error);
-      alert('Failed to save recurring transaction. Please try again.');
+      showError(error instanceof Error ? error.message : 'Failed to save recurring transaction. Please try again.');
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white text-gray-900 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -103,11 +116,14 @@ export function RecurringTransactionModal({ transaction, onClose }: RecurringTra
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Account *</label>
             <select
-              value={formData.account_id}
+              value={formData.account_id || ''}
               onChange={(e) => setFormData({ ...formData, account_id: parseInt(e.target.value) })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
+              <option value="" disabled>
+                {accounts.length > 0 ? 'Select account' : 'Create an account first'}
+              </option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name} ({account.type})

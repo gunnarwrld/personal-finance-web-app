@@ -8,6 +8,7 @@ import { useBillReminders } from '@/hooks/useBillReminders';
 // FREE-MODE: useSubscription no longer needed on dashboard
 // import { useSubscription } from '@/hooks/useSubscription';
 import { Link } from 'react-router-dom';
+import { formatCurrency } from '@/lib/currency';
 
 export const DashboardPage: React.FC = () => {
   const { budgets } = useBudgetsWithSpending();
@@ -118,7 +119,7 @@ export const DashboardPage: React.FC = () => {
                       </p>
                     </div>
                     <span className="text-lg font-bold text-red-900 dark:text-red-100">
-                      ${bill.amount.toFixed(2)}
+                      {formatCurrency(bill.amount, bill.account?.currency || 'USD')}
                     </span>
                   </div>
                 ))}
@@ -136,7 +137,7 @@ export const DashboardPage: React.FC = () => {
                       </p>
                     </div>
                     <span className="text-lg font-bold text-yellow-900 dark:text-yellow-100">
-                      ${bill.amount.toFixed(2)}
+                      {formatCurrency(bill.amount, bill.account?.currency || 'USD')}
                     </span>
                   </div>
                 ))}

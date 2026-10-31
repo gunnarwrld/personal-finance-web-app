@@ -24,7 +24,7 @@ export const transactionSchema = z.object({
   account_id: z.number().int().positive('Please select an account'),
   amount: z.number().positive('Amount must be greater than 0'),
   description: z.string().min(1, 'Description is required').max(200, 'Description is too long'),
-  category: z.string() as z.ZodType<TransactionCategory>,
+  category: z.string().min(1, 'Please select a category') as z.ZodType<TransactionCategory>,
   type: z.enum(['income', 'expense'] as const),
   date: z.string().min(1, 'Date is required'),
 });

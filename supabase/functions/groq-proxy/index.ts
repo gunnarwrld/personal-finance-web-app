@@ -1,8 +1,7 @@
-import Groq from 'https://esm.sh/groq-sdk@0.3.2';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 
 // ─────────────────────────────────────────────────────────────
-// Rate-limit configuration
+// Request limits
 // ─────────────────────────────────────────────────────────────
 const RATE_LIMIT = {
   /** Max requests a single user can make per window (strict 5 RPM to prevent a single user from exhausting global pool) */
@@ -14,6 +13,15 @@ const RATE_LIMIT = {
   /** Global window duration in milliseconds (1 minute) */
   globalWindowMs: 60_000,
 };
+
+/** Models callers may pick. Keep in sync with GROQ_CONFIG.models in src/config/groq.ts. */
+const ALLOWED_MODELS = new Set(['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']);
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+/** The app's prompts are a few KB; anything far larger is not ours. */
+const MAX_PROMPT_CHARS = 24_000;
+const MAX_TOKENS_CAP = 2048;
+
+const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // ─────────────────────────────────────────────────────────────
 // In-memory sliding-window counters
@@ -66,7 +74,17 @@ function pruneExpiredBuckets() {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// Errors use real HTTP status codes so they show up as failures in the
+// function logs; the client reads the {"error"} body from FunctionsHttpError.
+function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...extraHeaders },
+  });
+}
 
 // ─────────────────────────────────────────────────────────────
 // Edge Function handler
@@ -81,10 +99,7 @@ Deno.serve(async (req) => {
     // ── Authenticate the caller ─────────────────────────────
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'Missing authorization header' }, 401);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -97,88 +112,85 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: `Unauthorized: ${authError?.message || 'Invalid token'}` }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'Unauthorized: please sign in again' }, 401);
     }
 
     // ── Rate-limit check ────────────────────────────────────
     const { allowed, retryAfterMs } = checkRateLimit(user.id);
     if (!allowed) {
       const retryAfterSec = Math.ceil((retryAfterMs ?? 60_000) / 1000);
-      return new Response(
-        JSON.stringify({
-          error: `Rate limit exceeded. Try again in ${retryAfterSec} seconds.`,
-        }),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
+      return json(
+        { error: `Rate limit exceeded. Try again in ${retryAfterSec} seconds.` },
+        429,
+        { 'Retry-After': String(retryAfterSec) }
       );
     }
 
     // ── Parse and validate body ──────────────────────────────
-    const { prompt, options } = await req.json();
+    const { prompt, options } = await req.json().catch(() => ({}));
     if (!prompt || typeof prompt !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'A non-empty "prompt" string is required' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'A non-empty "prompt" string is required' }, 400);
+    }
+    if (prompt.length > MAX_PROMPT_CHARS) {
+      return json({ error: 'Prompt is too long' }, 400);
     }
 
-    // Cap max_tokens to prevent abuse
-    const maxTokens = Math.min(options?.maxTokens ?? 1024, 2048);
+    const model = options?.model ?? DEFAULT_MODEL;
+    if (!ALLOWED_MODELS.has(model)) {
+      return json({ error: `Model "${model}" is not allowed` }, 400);
+    }
+
+    // Clamp numeric options to sane ranges
+    const maxTokens = Math.min(Math.max(Number(options?.maxTokens) || 1024, 1), MAX_TOKENS_CAP);
+    const temperature = Math.min(Math.max(Number(options?.temperature ?? 0.7), 0), 2);
 
     // ── Call Groq ────────────────────────────────────────────
     const apiKey = Deno.env.get('GROQ_API_KEY');
     if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'GROQ_API_KEY environment variable is not set' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'GROQ_API_KEY environment variable is not set' }, 500);
     }
 
-    const groq = new Groq({ apiKey });
-
-    const response = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: options?.model || 'llama-3.3-70b-versatile',
-      temperature: options?.temperature ?? 0.7,
-      max_tokens: maxTokens,
+    const groqResponse = await fetch(GROQ_CHAT_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature,
+        max_tokens: maxTokens,
+      }),
+      signal: AbortSignal.timeout(30_000),
     });
 
-    const content = response.choices[0]?.message?.content || '';
+    const completion = await groqResponse.json().catch(() => null);
+    if (!groqResponse.ok) {
+      const upstreamMessage = completion?.error?.message || `status ${groqResponse.status}`;
+      console.error('Groq API error:', groqResponse.status, upstreamMessage);
+      if (groqResponse.status === 401) {
+        return json({ error: 'Invalid Groq API key on the server' }, 502);
+      }
+      if (groqResponse.status === 429) {
+        return json({ error: 'The AI provider is busy. Please try again in a minute.' }, 429, { 'Retry-After': '60' });
+      }
+      return json({ error: `AI provider error: ${upstreamMessage}` }, 502);
+    }
+
+    const content = completion?.choices?.[0]?.message?.content || '';
 
     // Housekeeping: prune expired buckets every so often
     pruneExpiredBuckets();
 
-    return new Response(
-      JSON.stringify({
-        content,
-        usage: response.usage ? {
-          promptTokens: response.usage.prompt_tokens,
-          completionTokens: response.usage.completion_tokens,
-          totalTokens: response.usage.total_tokens,
-        } : undefined,
-        model: response.model,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return json({
+      content,
+      usage: completion?.usage ? {
+        promptTokens: completion.usage.prompt_tokens,
+        completionTokens: completion.usage.completion_tokens,
+        totalTokens: completion.usage.total_tokens,
+      } : undefined,
+      model: completion?.model ?? model,
+    });
   } catch (error) {
     console.error('Error in groq-proxy edge function:', error);
-
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return json({ error: error instanceof Error ? error.message : 'Internal server error' }, 500);
   }
 });

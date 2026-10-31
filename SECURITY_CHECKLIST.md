@@ -39,7 +39,7 @@ Enhanced `.gitignore` now excludes:
 VITE_SUPABASE_URL=https://<your-project>.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGci... (Public - safe to expose in frontend)
 VITE_STRIPE_PUBLIC_KEY=pk_live_... (Public - safe to expose in frontend)
-VITE_GROQ_API_KEY=gsk_... (PRIVATE - keep secret!)
+GROQ_API_KEY=gsk_... (PRIVATE - Supabase secret only; never prefix with VITE_)
 ```
 
 ### ⚠️ Security Notes:
@@ -149,6 +149,6 @@ git push origin --force --all
 
 ---
 
-**Last Verified**: ${new Date().toISOString().split('T')[0]}
+**Last Verified**: 2026-10-31
 **Project**: personal-finance-web-app
 **Account**: <your-email> (Premium Setup Ready)
