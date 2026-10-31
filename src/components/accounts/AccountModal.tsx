@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ZodError } from 'zod';
 import { Modal, ModalFooter, Button, Input, Select } from '@/components/ui';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useToast } from '@/hooks/useToast';
@@ -86,16 +87,15 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, acc
       }
 
       onClose();
-    } catch (err: any) {
-      if (err.errors) {
-        // Zod validation errors
+    } catch (err) {
+      if (err instanceof ZodError) {
         const fieldErrors: Record<string, string> = {};
-        err.errors.forEach((error: any) => {
-          fieldErrors[error.path[0]] = error.message;
+        err.issues.forEach((issue) => {
+          fieldErrors[String(issue.path[0])] = issue.message;
         });
         setErrors(fieldErrors);
       } else {
-        showError(err.message || 'Failed to save account');
+        showError(err instanceof Error ? err.message : 'Failed to save account');
       }
     }
   };

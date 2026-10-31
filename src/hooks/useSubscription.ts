@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { createCheckoutSession, createCustomerPortalSession } from '@/lib/stripe';
 import type { UserSubscription, SubscriptionTier, SubscriptionStatus } from '@/types';
@@ -8,7 +8,6 @@ const SUBSCRIPTION_QUERY_KEY = ['user_subscription'];
 
 export function useSubscription() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
   // Fetch subscription
   const {
@@ -32,73 +31,9 @@ export function useSubscription() {
     enabled: !!user,
   });
 
-  // Update subscription status
-  const updateSubscription = useMutation({
-    mutationFn: async (updates: Partial<UserSubscription>) => {
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .upsert({
-          user_id: user.id,
-          ...updates,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update is_premium flag in user_preferences
-      if (updates.subscription_status === 'active') {
-        await supabase
-          .from('user_preferences')
-          .update({ is_premium: true })
-          .eq('user_id', user.id);
-      } else if (updates.subscription_status === 'canceled' || updates.subscription_status === 'incomplete_expired') {
-        await supabase
-          .from('user_preferences')
-          .update({ is_premium: false })
-          .eq('user_id', user.id);
-      }
-
-      return data as UserSubscription;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SUBSCRIPTION_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: ['user_preferences'] });
-    },
-  });
-
-  // Cancel subscription
-  const cancelSubscription = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .update({
-          subscription_status: 'canceled' as SubscriptionStatus,
-          cancel_at_period_end: true,
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update is_premium flag
-      await supabase
-        .from('user_preferences')
-        .update({ is_premium: false })
-        .eq('user_id', user.id);
-
-      return data as UserSubscription;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SUBSCRIPTION_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: ['user_preferences'] });
-    },
-  });
+  // The subscription row is written only by the Stripe webhook (service
+  // role); users can read it but not change it, so there are no client-side
+  // update or cancel mutations. Cancelling goes through the Stripe portal.
 
   // Subscribe to premium (redirects to Stripe Checkout)
   const subscribeToPremium = useMutation({
@@ -179,16 +114,10 @@ export function useSubscription() {
     subscription,
     isLoading,
     error,
-    updateSubscription: updateSubscription.mutate,
-    updateSubscriptionAsync: updateSubscription.mutateAsync,
-    cancelSubscription: cancelSubscription.mutate,
-    cancelSubscriptionAsync: cancelSubscription.mutateAsync,
     subscribeToPremium: subscribeToPremium.mutate,
     subscribeToPremiumAsync: subscribeToPremium.mutateAsync,
     openCustomerPortal: openCustomerPortal.mutate,
     openCustomerPortalAsync: openCustomerPortal.mutateAsync,
-    isUpdating: updateSubscription.isPending,
-    isCanceling: cancelSubscription.isPending,
     isSubscribing: subscribeToPremium.isPending,
     // Helper functions
     isPremium: isPremium(),

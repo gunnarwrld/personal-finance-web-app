@@ -26,18 +26,11 @@ export function useUserPreferences() {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // No preferences found, create default
-        const defaultPreferences: Omit<UserPreferences, 'created_at' | 'updated_at'> = {
-          user_id: user.id,
-          display_currency: 'USD',
-          balance_visible: true,
-          budget_alerts: true,
-          is_premium: false,
-        };
-
+        // A database trigger creates this row at signup; this covers accounts
+        // created before that trigger worked. Column defaults fill the rest.
         const { data: created, error: createError } = await supabase
           .from('user_preferences')
-          .insert([defaultPreferences])
+          .insert({ user_id: user.id })
           .select()
           .single();
 

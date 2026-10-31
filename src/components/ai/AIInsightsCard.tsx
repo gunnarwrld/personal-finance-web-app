@@ -12,6 +12,10 @@ import { Button } from '@/components/ui/Button';
 import { useAI } from '@/hooks/useAI';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/hooks/useToast';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { toAITransactions } from '@/lib/groq';
+import { parseLocalDate } from '@/lib/utils';
 // FREE-MODE: useSubscription no longer needed here
 // import { useSubscription } from '@/hooks/useSubscription';
 
@@ -19,6 +23,9 @@ export function AIInsightsCard() {
   // FREE-MODE: isPremium check removed
   // const { isPremium } = useSubscription();
   const { transactions } = useTransactions();
+  const { preferences } = useUserPreferences();
+  const { rates } = useCurrency();
+  const currency = preferences?.display_currency || 'USD';
   // const navigate = useNavigate(); // FREE-MODE: unused
   const { 
     insights, 
@@ -28,7 +35,7 @@ export function AIInsightsCard() {
     findSavingsAsync,
     isFindingSavings,
     clearInsights 
-  } = useAI('USD'); // You can make currency dynamic
+  } = useAI(currency);
 
   const [selectedInsight, setSelectedInsight] = useState<number>(0);
 
@@ -40,14 +47,14 @@ export function AIInsightsCard() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
       const recentTransactions = transactions.filter(
-        (t: any) => new Date(t.date) >= thirtyDaysAgo
+        (t) => parseLocalDate(t.date) >= thirtyDaysAgo
       );
       
       if (recentTransactions.length > 0) {
         try {
-          await analyzeSpendingAsync(recentTransactions);
-        } catch (err: any) {
-          showError(err.message || 'Failed to analyze spending');
+          await analyzeSpendingAsync(toAITransactions(recentTransactions, currency, rates));
+        } catch (err) {
+          showError(err instanceof Error ? err.message : 'Failed to analyze spending');
         }
       } else {
         showError('No transactions found in the last 30 days');
@@ -58,9 +65,9 @@ export function AIInsightsCard() {
   const handleFindSavings = async () => {
     if (transactions && transactions.length > 0) {
       try {
-        await findSavingsAsync(transactions.slice(0, 50));
-      } catch (err: any) {
-        showError(err.message || 'Failed to find savings');
+        await findSavingsAsync(toAITransactions(transactions.slice(0, 50), currency, rates));
+      } catch (err) {
+        showError(err instanceof Error ? err.message : 'Failed to find savings');
       }
     }
   };

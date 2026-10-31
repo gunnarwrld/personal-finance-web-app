@@ -6,544 +6,537 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      accounts: {
-        Row: {
-          id: number
-          user_id: string
-          name: string
-          type: string
-          balance: number
-          currency: string
-          bank_name: string | null
-          account_number: string | null
-          account_holder: string | null
-          notes: string | null
-          account_type: string
-          credit_limit: number | null
-          interest_rate: number | null
-          apy: number | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          user_id: string
-          name: string
-          type: string
-          balance: number
-          currency: string
-          bank_name?: string | null
-          account_number?: string | null
-          account_holder?: string | null
-          notes?: string | null
-          account_type?: string
-          credit_limit?: number | null
-          interest_rate?: number | null
-          apy?: number | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          user_id?: string
-          name?: string
-          type?: string
-          balance?: number
-          currency?: string
-          bank_name?: string | null
-          account_number?: string | null
-          account_holder?: string | null
-          notes?: string | null
-          account_type?: string
-          credit_limit?: number | null
-          interest_rate?: number | null
-          apy?: number | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      transactions: {
-        Row: {
-          id: number
-          user_id: string
-          account_id: number
-          amount: number
-          description: string
-          category: string
-          type: string
-          currency: string
-          date: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          user_id: string
-          account_id: number
-          amount: number
-          description: string
-          category: string
-          type: string
-          currency: string
-          date: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          user_id?: string
-          account_id?: number
-          amount?: number
-          description?: string
-          category?: string
-          type?: string
-          currency?: string
-          date?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_account_id_fkey"
-            columns: ["account_id"]
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      user_preferences: {
-        Row: {
-          user_id: string
-          display_currency: string
-          balance_visible: boolean
-          budget_alerts: boolean
-          is_premium: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          user_id: string
-          display_currency?: string
-          balance_visible?: boolean
-          budget_alerts?: boolean
-          is_premium?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          user_id?: string
-          display_currency?: string
-          balance_visible?: boolean
-          budget_alerts?: boolean
-          is_premium?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      budgets: {
-        Row: {
-          id: number
-          user_id: string
-          category: string
-          amount: number
-          period: string
-          start_date: string
-          end_date: string | null
-          alert_threshold: number
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          user_id: string
-          category: string
-          amount: number
-          period?: string
-          start_date: string
-          end_date?: string | null
-          alert_threshold?: number
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          user_id?: string
-          category?: string
-          amount?: number
-          period?: string
-          start_date?: string
-          end_date?: string | null
-          alert_threshold?: number
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      recurring_transactions: {
-        Row: {
-          id: number
-          user_id: string
-          account_id: number
-          description: string
-          amount: number
-          category: string
-          type: string
-          frequency: string
-          start_date: string
-          end_date: string | null
-          next_occurrence: string
-          last_created_at: string | null
-          is_active: boolean
-          auto_create: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          user_id: string
-          account_id: number
-          description: string
-          amount: number
-          category: string
-          type: string
-          frequency: string
-          start_date: string
-          end_date?: string | null
-          next_occurrence: string
-          last_created_at?: string | null
-          is_active?: boolean
-          auto_create?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          user_id?: string
-          account_id?: number
-          description?: string
-          amount?: number
-          category?: string
-          type?: string
-          frequency?: string
-          start_date?: string
-          end_date?: string | null
-          next_occurrence?: string
-          last_created_at?: string | null
-          is_active?: boolean
-          auto_create?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recurring_transactions_account_id_fkey"
-            columns: ["account_id"]
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      bill_reminders: {
-        Row: {
-          id: number
-          user_id: string
-          account_id: number | null
-          title: string
-          amount: number
-          category: string
-          due_date: string
-          is_paid: boolean
-          paid_date: string | null
-          recurring_id: number | null
-          reminder_days_before: number
-          notes: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          user_id: string
-          account_id?: number | null
-          title: string
-          amount: number
-          category: string
-          due_date: string
-          is_paid?: boolean
-          paid_date?: string | null
-          recurring_id?: number | null
-          reminder_days_before?: number
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          user_id?: string
-          account_id?: number | null
-          title?: string
-          amount?: number
-          category?: string
-          due_date?: string
-          is_paid?: boolean
-          paid_date?: string | null
-          recurring_id?: number | null
-          reminder_days_before?: number
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bill_reminders_account_id_fkey"
-            columns: ["account_id"]
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bill_reminders_recurring_id_fkey"
-            columns: ["recurring_id"]
-            referencedRelation: "recurring_transactions"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       account_transfers: {
         Row: {
-          id: number
-          user_id: string
-          from_account_id: number
-          to_account_id: number
           amount: number
-          from_currency: string
-          to_currency: string
-          exchange_rate: number
           converted_amount: number
+          created_at: string | null
           description: string | null
+          exchange_rate: number | null
+          from_account_id: number
+          from_currency: string
+          id: number
+          to_account_id: number
+          to_currency: string
           transfer_date: string
-          created_at: string
-          updated_at: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
-          id?: number
-          user_id: string
-          from_account_id: number
-          to_account_id: number
           amount: number
-          from_currency: string
-          to_currency: string
-          exchange_rate?: number
           converted_amount: number
+          created_at?: string | null
           description?: string | null
-          transfer_date?: string
-          created_at?: string
-          updated_at?: string
+          exchange_rate?: number | null
+          from_account_id: number
+          from_currency: string
+          id?: number
+          to_account_id: number
+          to_currency: string
+          transfer_date: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
-          id?: number
-          user_id?: string
-          from_account_id?: number
-          to_account_id?: number
           amount?: number
-          from_currency?: string
-          to_currency?: string
-          exchange_rate?: number
           converted_amount?: number
+          created_at?: string | null
           description?: string | null
+          exchange_rate?: number | null
+          from_account_id?: number
+          from_currency?: string
+          id?: number
+          to_account_id?: number
+          to_currency?: string
           transfer_date?: string
-          created_at?: string
-          updated_at?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "account_transfers_from_account_id_fkey"
             columns: ["from_account_id"]
+            isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "account_transfers_to_account_id_fkey"
             columns: ["to_account_id"]
+            isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
-      user_subscriptions: {
+      accounts: {
         Row: {
+          account_holder: string | null
+          account_number: string | null
+          balance: number
+          bank_name: string | null
+          created_at: string | null
+          currency: string | null
           id: number
+          name: string
+          notes: string | null
+          type: string
+          updated_at: string | null
           user_id: string
-          subscription_tier: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          subscription_status: string | null
-          current_period_start: string | null
-          current_period_end: string | null
-          cancel_at_period_end: boolean
-          trial_end: string | null
-          created_at: string
-          updated_at: string
         }
         Insert: {
+          account_holder?: string | null
+          account_number?: string | null
+          balance?: number
+          bank_name?: string | null
+          created_at?: string | null
+          currency?: string | null
           id?: number
+          name: string
+          notes?: string | null
+          type: string
+          updated_at?: string | null
           user_id: string
-          subscription_tier?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
-          current_period_start?: string | null
-          current_period_end?: string | null
-          cancel_at_period_end?: boolean
-          trial_end?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
+          account_holder?: string | null
+          account_number?: string | null
+          balance?: number
+          bank_name?: string | null
+          created_at?: string | null
+          currency?: string | null
           id?: number
-          user_id?: string
-          subscription_tier?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
-          current_period_start?: string | null
-          current_period_end?: string | null
-          cancel_at_period_end?: boolean
-          trial_end?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          id: number
-          user_id: string
-          type: string
-          title: string
-          message: string
-          priority: string
-          is_read: boolean
-          related_id: number | null
-          related_type: string | null
-          action_url: string | null
-          metadata: Json | null
-          created_at: string
-          read_at: string | null
-        }
-        Insert: {
-          id?: number
-          user_id: string
-          type: string
-          title: string
-          message: string
-          priority?: string
-          is_read?: boolean
-          related_id?: number | null
-          related_type?: string | null
-          action_url?: string | null
-          metadata?: Json | null
-          created_at?: string
-          read_at?: string | null
-        }
-        Update: {
-          id?: number
-          user_id?: string
+          name?: string
+          notes?: string | null
           type?: string
-          title?: string
-          message?: string
-          priority?: string
-          is_read?: boolean
-          related_id?: number | null
-          related_type?: string | null
-          action_url?: string | null
-          metadata?: Json | null
-          created_at?: string
-          read_at?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
-      notification_preferences: {
+      bill_reminders: {
         Row: {
+          account_id: number | null
+          amount: number
+          category: string
+          created_at: string | null
+          due_date: string
+          id: number
+          is_paid: boolean | null
+          notes: string | null
+          paid_date: string | null
+          recurring_id: number | null
+          reminder_days_before: number | null
+          title: string
+          updated_at: string | null
           user_id: string
-          email_notifications: boolean
-          push_notifications: boolean
-          bill_reminders: boolean
-          budget_alerts: boolean
-          recurring_transactions: boolean
-          goal_achievements: boolean
-          subscription_updates: boolean
-          low_balance_alerts: boolean
-          unusual_spending_alerts: boolean
-          notification_frequency: string
-          quiet_hours_start: string | null
-          quiet_hours_end: string | null
-          created_at: string
-          updated_at: string
         }
         Insert: {
+          account_id?: number | null
+          amount: number
+          category: string
+          created_at?: string | null
+          due_date: string
+          id?: number
+          is_paid?: boolean | null
+          notes?: string | null
+          paid_date?: string | null
+          recurring_id?: number | null
+          reminder_days_before?: number | null
+          title: string
+          updated_at?: string | null
           user_id: string
-          email_notifications?: boolean
-          push_notifications?: boolean
-          bill_reminders?: boolean
-          budget_alerts?: boolean
-          recurring_transactions?: boolean
-          goal_achievements?: boolean
-          subscription_updates?: boolean
-          low_balance_alerts?: boolean
-          unusual_spending_alerts?: boolean
-          notification_frequency?: string
-          quiet_hours_start?: string | null
-          quiet_hours_end?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
+          account_id?: number | null
+          amount?: number
+          category?: string
+          created_at?: string | null
+          due_date?: string
+          id?: number
+          is_paid?: boolean | null
+          notes?: string | null
+          paid_date?: string | null
+          recurring_id?: number | null
+          reminder_days_before?: number | null
+          title?: string
+          updated_at?: string | null
           user_id?: string
-          email_notifications?: boolean
-          push_notifications?: boolean
-          bill_reminders?: boolean
-          budget_alerts?: boolean
-          recurring_transactions?: boolean
-          goal_achievements?: boolean
-          subscription_updates?: boolean
-          low_balance_alerts?: boolean
-          unusual_spending_alerts?: boolean
-          notification_frequency?: string
-          quiet_hours_start?: string | null
-          quiet_hours_end?: string | null
-          created_at?: string
-          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_reminders_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_reminders_recurring_id_fkey"
+            columns: ["recurring_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          alert_threshold: number | null
+          amount: number
+          category: string
+          created_at: string | null
+          end_date: string | null
+          id: number
+          is_active: boolean | null
+          period: string | null
+          start_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_threshold?: number | null
+          amount: number
+          category: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: number
+          is_active?: boolean | null
+          period?: string | null
+          start_date: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_threshold?: number | null
+          amount?: number
+          category?: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: number
+          is_active?: boolean | null
+          period?: string | null
+          start_date?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
       currency_rates: {
         Row: {
+          base_currency: string | null
           id: number
-          base_currency: string
+          last_updated: string | null
           rates: Json
-          last_updated: string
         }
         Insert: {
+          base_currency?: string | null
           id?: number
-          base_currency: string
+          last_updated?: string | null
           rates: Json
-          last_updated: string
         }
         Update: {
+          base_currency?: string | null
           id?: number
-          base_currency?: string
+          last_updated?: string | null
           rates?: Json
-          last_updated?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          bill_reminders: boolean
+          budget_alerts: boolean
+          created_at: string
+          email_notifications: boolean
+          goal_achievements: boolean
+          low_balance_alerts: boolean
+          notification_frequency: string
+          push_notifications: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          recurring_transactions: boolean
+          subscription_updates: boolean
+          unusual_spending_alerts: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bill_reminders?: boolean
+          budget_alerts?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          goal_achievements?: boolean
+          low_balance_alerts?: boolean
+          notification_frequency?: string
+          push_notifications?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          recurring_transactions?: boolean
+          subscription_updates?: boolean
+          unusual_spending_alerts?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bill_reminders?: boolean
+          budget_alerts?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          goal_achievements?: boolean
+          low_balance_alerts?: boolean
+          notification_frequency?: string
+          push_notifications?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          recurring_transactions?: boolean
+          subscription_updates?: boolean
+          unusual_spending_alerts?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string
+          id: number
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          priority: string
+          read_at: string | null
+          related_id: number | null
+          related_type: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string
+          id?: number
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          related_id?: number | null
+          related_type?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string
+          id?: number
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          priority?: string
+          read_at?: string | null
+          related_id?: number | null
+          related_type?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recurring_transactions: {
+        Row: {
+          account_id: number | null
+          amount: number
+          auto_create: boolean | null
+          category: string
+          created_at: string | null
+          description: string
+          end_date: string | null
+          frequency: string
+          id: number
+          is_active: boolean | null
+          last_created_at: string | null
+          next_occurrence: string
+          start_date: string
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id?: number | null
+          amount: number
+          auto_create?: boolean | null
+          category: string
+          created_at?: string | null
+          description: string
+          end_date?: string | null
+          frequency: string
+          id?: number
+          is_active?: boolean | null
+          last_created_at?: string | null
+          next_occurrence: string
+          start_date: string
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: number | null
+          amount?: number
+          auto_create?: boolean | null
+          category?: string
+          created_at?: string | null
+          description?: string
+          end_date?: string | null
+          frequency?: string
+          id?: number
+          is_active?: boolean | null
+          last_created_at?: string | null
+          next_occurrence?: string
+          start_date?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          account_id: number
+          amount: number
+          category: string
+          created_at: string | null
+          currency: string | null
+          date: string
+          description: string
+          id: number
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: number
+          amount: number
+          category: string
+          created_at?: string | null
+          currency?: string | null
+          date: string
+          description: string
+          id?: number
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: number
+          amount?: number
+          category?: string
+          created_at?: string | null
+          currency?: string | null
+          date?: string
+          description?: string
+          id?: number
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_preferences: {
+        Row: {
+          balance_visible: boolean | null
+          budget_alerts: boolean | null
+          created_at: string | null
+          display_currency: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance_visible?: boolean | null
+          budget_alerts?: boolean | null
+          created_at?: string | null
+          display_currency?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance_visible?: boolean | null
+          budget_alerts?: boolean | null
+          created_at?: string | null
+          display_currency?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: number
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          subscription_tier: string | null
+          trial_end: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: number
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          subscription_tier?: string | null
+          trial_end?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: number
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          subscription_tier?: string | null
+          trial_end?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -552,7 +545,98 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_account_transfer: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_exchange_rate?: number
+          p_from_account_id: number
+          p_to_account_id: number
+          p_transfer_date?: string
+        }
+        Returns: {
+          amount: number
+          converted_amount: number
+          created_at: string | null
+          description: string | null
+          exchange_rate: number | null
+          from_account_id: number
+          from_currency: string
+          id: number
+          to_account_id: number
+          to_currency: string
+          transfer_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "account_transfers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_transaction: {
+        Args: {
+          p_account_id: number
+          p_amount: number
+          p_category: string
+          p_date: string
+          p_description: string
+          p_type: string
+        }
+        Returns: {
+          account_id: number
+          amount: number
+          category: string
+          created_at: string | null
+          currency: string | null
+          date: string
+          description: string
+          id: number
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      delete_account_transfer: { Args: { p_id: number }; Returns: undefined }
+      delete_transaction: { Args: { p_id: number }; Returns: undefined }
+      update_transaction: {
+        Args: {
+          p_account_id: number
+          p_amount: number
+          p_category: string
+          p_date: string
+          p_description: string
+          p_id: number
+          p_type: string
+        }
+        Returns: {
+          account_id: number
+          amount: number
+          category: string
+          created_at: string | null
+          currency: string | null
+          date: string
+          description: string
+          id: number
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
@@ -562,3 +646,127 @@ export interface Database {
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+

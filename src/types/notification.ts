@@ -1,3 +1,5 @@
+import type { Json } from './database.types';
+
 // Notification types
 
 export type NotificationType = 
@@ -23,7 +25,7 @@ export interface Notification {
   related_id: number | null; // ID of related entity (bill, budget, etc.)
   related_type: 'bill' | 'budget' | 'transaction' | 'goal' | 'subscription' | null;
   action_url: string | null; // URL to navigate to when clicked
-  metadata: Record<string, any> | null; // Additional data
+  metadata: Json | null; // Additional data
   created_at: string;
   read_at: string | null;
 }
@@ -38,7 +40,7 @@ export interface InsertNotification {
   related_id?: number | null;
   related_type?: 'bill' | 'budget' | 'transaction' | 'goal' | 'subscription' | null;
   action_url?: string | null;
-  metadata?: Record<string, any> | null;
+  metadata?: Json | null;
 }
 
 export interface UpdateNotification {

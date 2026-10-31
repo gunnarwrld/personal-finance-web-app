@@ -1,5 +1,6 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { parseLocalDate } from '@/lib/utils';
 import type { TimeSeriesData } from '@/types';
 
 interface SpendingTrendsChartProps {
@@ -16,8 +17,17 @@ export const SpendingTrendsChart: React.FC<SpendingTrendsChartProps> = ({ data, 
     );
   }
 
+  // Bucket keys are YYYY-MM-DD (daily/weekly), YYYY-MM (monthly) or YYYY.
+  const formatBucket = (key: string) => {
+    if (key.length === 4) return key;
+    if (key.length === 7) {
+      return parseLocalDate(`${key}-01`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    }
+    return parseLocalDate(key).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   const chartData = data.data.map((point) => ({
-    date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: formatBucket(point.date),
     amount: parseFloat(point.value.toFixed(2)),
   }));
 

@@ -17,7 +17,6 @@ export interface UserPreferences {
   display_currency: string;
   balance_visible: boolean;
   budget_alerts: boolean;
-  is_premium: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -27,12 +26,10 @@ export interface InsertUserPreferences {
   display_currency?: string;
   balance_visible?: boolean;
   budget_alerts?: boolean;
-  is_premium?: boolean;
 }
 
 export interface UpdateUserPreferences {
   display_currency?: string;
   balance_visible?: boolean;
   budget_alerts?: boolean;
-  is_premium?: boolean;
 }

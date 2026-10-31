@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, ModalFooter, Button, Input, Select, TextArea } from '@/components/ui';
+import { ZodError } from 'zod';
+import { Modal, ModalFooter, Button, Input, Select } from '@/components/ui';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useToast } from '@/hooks/useToast';
 import { transactionSchema } from '@/lib/validations';
 import { getIncomeCategories, getExpenseCategories } from '@/lib/categories';
+import { toLocalDateString } from '@/lib/utils';
 import type { Transaction, TransactionType, TransactionCategory } from '@/types';
 
 interface TransactionModalProps {
@@ -20,8 +22,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
     amount: '',
     category: '' as TransactionCategory | '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
-    notes: '',
+    date: toLocalDateString(),
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -29,7 +30,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   const { accounts } = useAccounts();
   const { success, error: showError } = useToast();
 
+  // Reset the form when the modal opens or switches transaction. Accounts are
+  // deliberately not a dependency: they refetch in the background and would
+  // wipe whatever the user has typed so far.
   useEffect(() => {
+    if (!isOpen) return;
     if (transaction) {
       setFormData({
         type: transaction.type,
@@ -38,21 +43,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
         category: transaction.category,
         description: transaction.description,
         date: transaction.date.split('T')[0],
-        notes: '',
       });
     } else {
       setFormData({
         type: 'expense',
-        account_id: accounts && accounts.length > 0 ? accounts[0].id.toString() : '',
+        account_id: '',
         amount: '',
         category: '',
         description: '',
-        date: new Date().toISOString().split('T')[0],
-        notes: '',
+        date: toLocalDateString(),
       });
     }
     setErrors({});
-  }, [transaction, isOpen, accounts]);
+  }, [transaction, isOpen]);
+
+  // Pick the first account once accounts have loaded, if none is chosen yet.
+  useEffect(() => {
+    if (isOpen && !formData.account_id && accounts.length > 0) {
+      setFormData((prev) => (prev.account_id ? prev : { ...prev, account_id: accounts[0].id.toString() }));
+    }
+  }, [isOpen, accounts, formData.account_id]);
 
   const categoryOptions = (formData.type === 'income' ? getIncomeCategories() : getExpenseCategories()).map(
     (cat) => ({
@@ -88,8 +98,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
       const validatedData = transactionSchema.parse({
         type: formData.type,
         account_id: parseInt(formData.account_id),
-        amount: Math.abs(parseFloat(formData.amount)), // always positive; hook handles sign
-        currency: selectedAccount.currency,
+        amount: Math.abs(parseFloat(formData.amount)), // always positive; the type decides the sign
         category: formData.category as TransactionCategory,
         description: formData.description,
         date: formData.date,
@@ -105,24 +114,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
         success('Transaction updated successfully');
       } else {
         // Create new transaction
-        await createTransactionAsync({
-          ...validatedData,
-          currency: selectedAccount.currency,
-        });
+        await createTransactionAsync(validatedData);
         success('Transaction created successfully');
       }
 
       onClose();
-    } catch (err: any) {
-      if (err.errors) {
-        // Zod validation errors
+    } catch (err) {
+      if (err instanceof ZodError) {
         const fieldErrors: Record<string, string> = {};
-        err.errors.forEach((error: any) => {
-          fieldErrors[error.path[0]] = error.message;
+        err.issues.forEach((issue) => {
+          fieldErrors[String(issue.path[0])] = issue.message;
         });
         setErrors(fieldErrors);
       } else {
-        showError(err.message || 'Failed to save transaction');
+        showError(err instanceof Error ? err.message : 'Failed to save transaction');
       }
     }
   };
@@ -155,6 +160,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             value={formData.account_id}
             onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
             options={accountOptions}
+            placeholder={accountOptions.length > 0 ? 'Select an account' : 'Create an account first'}
             error={errors.account_id}
           />
 
@@ -176,6 +182,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value as TransactionCategory })}
             options={categoryOptions}
+            placeholder="Select a category"
             error={errors.category}
           />
 
@@ -199,15 +206,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             required
           />
 
-          {/* Notes */}
-          <TextArea
-            label="Notes (Optional)"
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            error={errors.notes}
-            placeholder="Add any additional notes..."
-            rows={3}
-          />
         </div>
 
         <ModalFooter>

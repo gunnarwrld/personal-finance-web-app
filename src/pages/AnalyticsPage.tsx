@@ -7,6 +7,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 // FREE-MODE: useSubscription no longer needed
 // import { useSubscription } from '@/hooks/useSubscription';
+import { toLocalDateString } from '@/lib/utils';
 import type { AnalyticsPeriod } from '@/types';
 
 export const AnalyticsPage: React.FC = () => {
@@ -78,7 +79,7 @@ export const AnalyticsPage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `analytics_${period}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `analytics_${period}_${toLocalDateString()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
+import { getExpenseCategories } from '@/lib/categories';
+import { toLocalDateString } from '@/lib/utils';
 import type { BudgetWithSpending, BudgetPeriod } from '@/types';
 
 interface BudgetModalProps {
@@ -9,8 +12,9 @@ interface BudgetModalProps {
 }
 
 export function BudgetModal({ budget, onClose }: BudgetModalProps) {
-  const { createBudget, updateBudget } = useBudgets();
+  const { createBudgetAsync, updateBudgetAsync } = useBudgets();
   const { user } = useAuth();
+  const { error: showError } = useToast();
 
   const [formData, setFormData] = useState({
     category: budget?.category || '',
@@ -19,19 +23,13 @@ export function BudgetModal({ budget, onClose }: BudgetModalProps) {
     alert_threshold: budget?.alert_threshold || 80,
   });
 
-  const categories = [
-    'Food & Dining',
-    'Shopping',
-    'Transportation',
-    'Entertainment',
-    'Bills & Utilities',
-    'Healthcare',
-    'Travel',
-    'Education',
-    'Personal Care',
-    'Gifts & Donations',
-    'Other',
-  ];
+  // Budgets only track spending in categories transactions can actually use.
+  // Keep an older budget's category selectable while editing it.
+  const expenseCategories: string[] = getExpenseCategories();
+  const categories =
+    budget?.category && !expenseCategories.includes(budget.category)
+      ? [...expenseCategories, budget.category]
+      : expenseCategories;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,27 +39,27 @@ export function BudgetModal({ budget, onClose }: BudgetModalProps) {
     try {
       // Calculate start and end dates based on period
       const now = new Date();
-      const start_date = now.toISOString();
+      const start_date = toLocalDateString(now);
       let end_date: string | null = null;
 
       if (formData.period === 'weekly') {
         const endDate = new Date(now);
         endDate.setDate(endDate.getDate() + 7);
-        end_date = endDate.toISOString();
+        end_date = toLocalDateString(endDate);
       } else if (formData.period === 'monthly') {
         const endDate = new Date(now);
         endDate.setMonth(endDate.getMonth() + 1);
-        end_date = endDate.toISOString();
+        end_date = toLocalDateString(endDate);
       } else if (formData.period === 'yearly') {
         const endDate = new Date(now);
         endDate.setFullYear(endDate.getFullYear() + 1);
-        end_date = endDate.toISOString();
+        end_date = toLocalDateString(endDate);
       }
 
       if (budget) {
-        await updateBudget({ id: budget.id, updates: formData });
+        await updateBudgetAsync({ id: budget.id, updates: formData });
       } else {
-        await createBudget({
+        await createBudgetAsync({
           ...formData,
           user_id: user.id,
           start_date,
@@ -70,14 +68,13 @@ export function BudgetModal({ budget, onClose }: BudgetModalProps) {
       }
       onClose();
     } catch (error) {
-      console.error('Failed to save budget:', error);
-      alert('Failed to save budget. Please try again.');
+      showError(error instanceof Error ? error.message : 'Failed to save budget. Please try again.');
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white text-gray-900 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
