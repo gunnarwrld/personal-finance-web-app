@@ -1,18 +1,21 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Shield, TrendingUp, PiggyBank, Globe } from 'lucide-react';
 import { GoogleSignInButton, EmailAuthForm, AppleSignInButton } from '@/components/auth';
-import { useAuth } from '@/hooks/useAuth';
+import { getAuthProviderSettings, type AuthProviderSettings } from '@/lib/supabase';
+
+// Used if the settings request fails: email and Google are the providers
+// this project has always had on.
+const DEFAULT_PROVIDERS: AuthProviderSettings = { email: true, google: true, apple: false };
 
 export const AuthPage: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (user) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, navigate]);
+  // Signed-in users never get here: the /auth route redirects them.
+  const { data: providers = DEFAULT_PROVIDERS } = useQuery({
+    queryKey: ['auth_provider_settings'],
+    queryFn: getAuthProviderSettings,
+    staleTime: 1000 * 60 * 60,
+  });
+  const hasOAuth = providers.google || providers.apple;
 
   const features = [
     {
@@ -106,23 +109,31 @@ export const AuthPage: React.FC = () => {
 
                 {/* Auth Forms */}
                 <div className="space-y-6">
-                  <EmailAuthForm />
+                  {providers.email && <EmailAuthForm />}
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                  {providers.email && hasOAuth && (
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">
+                          Or continue with
+                        </span>
+                      </div>
                     </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">
-                        Or continue with
-                      </span>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <GoogleSignInButton />
-                    <AppleSignInButton />
-                  </div>
+                  {hasOAuth && (
+                    <div
+                      className={`grid grid-cols-1 gap-4 ${
+                        providers.google && providers.apple ? 'sm:grid-cols-2' : ''
+                      }`}
+                    >
+                      {providers.google && <GoogleSignInButton />}
+                      {providers.apple && <AppleSignInButton />}
+                    </div>
+                  )}
 
                   <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-6">
                     By signing in, you agree to our Terms of Service and Privacy Policy

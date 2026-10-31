@@ -1,120 +1,31 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { User } from '@supabase/supabase-js';
-import { supabase, signInWithGoogle as signInWithGoogleFn, signOut as signOutFn } from '@/lib/supabase';
+import { useContext, useState } from 'react';
+import { AuthContext } from '@/contexts/authContext';
+import {
+  signInWithGoogle as signInWithGoogleFn,
+  signInWithApple as signInWithAppleFn,
+  signInWithEmail as signInWithEmailFn,
+  signUpWithEmail as signUpWithEmailFn,
+  signOut as signOutFn,
+} from '@/lib/supabase';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+
+  // Busy/error state is per caller, so one sign-in button spinning does not
+  // make every other button on the page spin too.
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check active session
-    const checkSession = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          throw error;
-        }
-        
-        setUser(user);
-      } catch (err) {
-        console.error('Session check error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to check session');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-
-      if (event === 'SIGNED_IN') {
-        navigate('/dashboard');
-      } else if (event === 'SIGNED_OUT') {
-        navigate('/auth');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
-
-  const signInWithGoogle = async () => {
+  const run = async (action: () => Promise<unknown>, fallbackMessage: string) => {
     try {
       setError(null);
       setIsLoading(true);
-      await signInWithGoogleFn();
+      await action();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sign in';
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signInWithApple = async () => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      const { signInWithApple: signInWithAppleFn } = await import('@/lib/supabase');
-      await signInWithAppleFn();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sign in';
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signInWithEmail = async (email: string, password?: string) => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      const { signInWithEmail: signInWithEmailFn } = await import('@/lib/supabase');
-      await signInWithEmailFn(email, password);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sign in';
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signUpWithEmail = async (email: string, password?: string) => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      const { signUpWithEmail: signUpWithEmailFn } = await import('@/lib/supabase');
-      await signUpWithEmailFn(email, password);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sign up';
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      await signOutFn();
-      setUser(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sign out';
+      const message = err instanceof Error ? err.message : fallbackMessage;
       setError(message);
       throw new Error(message);
     } finally {
@@ -123,15 +34,18 @@ export function useAuth() {
   };
 
   return {
-    user,
-    loading,
+    user: context.user,
+    session: context.session,
+    loading: context.loading,
     isLoading,
     error,
-    isAuthenticated: !!user,
-    signInWithGoogle,
-    signInWithApple,
-    signInWithEmail,
-    signUpWithEmail,
-    signOut,
+    isAuthenticated: !!context.user,
+    signInWithGoogle: () => run(signInWithGoogleFn, 'Failed to sign in'),
+    signInWithApple: () => run(signInWithAppleFn, 'Failed to sign in'),
+    signInWithEmail: (email: string, password?: string) =>
+      run(() => signInWithEmailFn(email, password), 'Failed to sign in'),
+    signUpWithEmail: (email: string, password?: string) =>
+      run(() => signUpWithEmailFn(email, password), 'Failed to sign up'),
+    signOut: () => run(signOutFn, 'Failed to sign out'),
   };
 }
