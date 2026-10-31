@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'FinanceTracker - Smart Personal Finance Management',
         short_name: 'FinanceTracker',
@@ -18,46 +18,51 @@ export default defineConfig({
         background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'portrait-primary',
+        categories: ['finance', 'productivity'],
         icons: [
           {
-            src: '/icon-192.png',
+            src: '/pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
-            src: '/icon-512.png',
+            src: '/pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Manifest icons are fetched by the browser when installing; they do
+        // not need to sit in the precache.
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            // Read-only offline copies of table data. Auth, Edge Function and
+            // Storage responses are never cached, and AuthProvider deletes
+            // this cache whenever the signed-in user changes.
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' &&
+              url.hostname.endsWith('.supabase.co') &&
+              url.pathname.startsWith('/rest/v1/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-cache',
+              networkTimeoutSeconds: 10,
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 // 24 hours
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/api\.exchangerate\.host\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'currency-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 6 // 6 hours
+                statuses: [200]
               }
             }
           }
