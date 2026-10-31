@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 import { ZodError } from 'zod';
 import { Modal, ModalFooter, Button, Input, Select } from '@/components/ui';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -26,7 +27,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { createTransactionAsync, updateTransactionAsync, isCreating, isUpdating } = useTransactions();
+  const {
+    createTransactionAsync,
+    updateTransactionAsync,
+    deleteTransactionAsync,
+    isCreating,
+    isUpdating,
+    isDeleting,
+  } = useTransactions();
   const { accounts } = useAccounts();
   const { success, error: showError } = useToast();
 
@@ -64,12 +72,17 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
     }
   }, [isOpen, accounts, formData.account_id]);
 
-  const categoryOptions = (formData.type === 'income' ? getIncomeCategories() : getExpenseCategories()).map(
-    (cat) => ({
-      value: cat,
-      label: cat,
-    })
-  );
+  // Keep an older category (e.g. quick add's former "Food") selectable while
+  // editing, so saving other changes does not silently drop it.
+  const typeCategories: string[] = formData.type === 'income' ? getIncomeCategories() : getExpenseCategories();
+  const categories =
+    formData.category && !typeCategories.includes(formData.category)
+      ? [...typeCategories, formData.category]
+      : typeCategories;
+  const categoryOptions = categories.map((cat) => ({
+    value: cat,
+    label: cat,
+  }));
 
   const accountOptions = (accounts || []).map((acc) => ({
     value: acc.id.toString(),
@@ -129,6 +142,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
       } else {
         showError(err instanceof Error ? err.message : 'Failed to save transaction');
       }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!transaction) return;
+    if (!window.confirm(`Delete "${transaction.description}"? The account balance will be adjusted to undo it.`)) {
+      return;
+    }
+
+    try {
+      await deleteTransactionAsync(transaction);
+      success('Transaction deleted');
+      onClose();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to delete transaction');
     }
   };
 
@@ -208,16 +236,31 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
 
         </div>
 
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            isLoading={isCreating || isUpdating}
-          >
-            {transaction ? 'Update Transaction' : 'Add Transaction'}
-          </Button>
+        <ModalFooter className={transaction ? 'justify-between' : undefined}>
+          {transaction && (
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleDelete}
+              isLoading={isDeleting}
+              disabled={isUpdating}
+              leftIcon={!isDeleting && <Trash2 className="h-4 w-4" />}
+            >
+              Delete
+            </Button>
+          )}
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={isCreating || isUpdating}
+              disabled={isDeleting}
+            >
+              {transaction ? 'Update Transaction' : 'Add Transaction'}
+            </Button>
+          </div>
         </ModalFooter>
       </form>
     </Modal>

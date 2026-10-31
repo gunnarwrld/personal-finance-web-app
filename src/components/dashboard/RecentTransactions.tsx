@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { TransactionItem } from '../transactions/TransactionItem';
+import { TransactionModal } from '../transactions/TransactionModal';
 import { useTransactions } from '../../hooks/useTransactions';
+import type { Transaction } from '@/types';
 
 export function RecentTransactions() {
   const { transactions, isLoading } = useTransactions();
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Get only the first 5 transactions
   const recentTransactions = transactions.slice(0, 5);
@@ -46,7 +50,7 @@ export function RecentTransactions() {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h3>
         <Link
-          to="/accounts"
+          to="/transactions"
           className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
           See all
@@ -59,10 +63,16 @@ export function RecentTransactions() {
           <TransactionItem
             key={transaction.id}
             transaction={transaction}
-            onClick={() => {}}
+            onClick={setEditingTransaction}
           />
         ))}
       </div>
+
+      <TransactionModal
+        isOpen={!!editingTransaction}
+        onClose={() => setEditingTransaction(null)}
+        transaction={editingTransaction}
+      />
     </Card>
   );
 }
