@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useBillReminders } from '@/hooks/useBillReminders';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
 import type { BillReminderWithStatus } from '@/types';
 
 interface BillReminderModalProps {
@@ -10,9 +11,10 @@ interface BillReminderModalProps {
 }
 
 export function BillReminderModal({ bill, onClose }: BillReminderModalProps) {
-  const { createBill, updateBill } = useBillReminders();
+  const { createBillAsync, updateBillAsync } = useBillReminders();
   const { accounts } = useAccounts();
   const { user } = useAuth();
+  const { error: showError } = useToast();
 
   const [formData, setFormData] = useState({
     title: bill?.title || '',
@@ -23,6 +25,13 @@ export function BillReminderModal({ bill, onClose }: BillReminderModalProps) {
     reminder_days_before: bill?.reminder_days_before || 3,
     notes: bill?.notes || '',
   });
+
+  // Accounts may still be loading when the modal opens.
+  useEffect(() => {
+    if (!formData.account_id && accounts.length > 0) {
+      setFormData((prev) => (prev.account_id ? prev : { ...prev, account_id: accounts[0].id }));
+    }
+  }, [accounts, formData.account_id]);
 
   const categories = [
     'Rent/Mortgage',
@@ -43,31 +52,27 @@ export function BillReminderModal({ bill, onClose }: BillReminderModalProps) {
     if (!user) return;
 
     try {
+      // due_date is a date column: send the picked day as-is.
       if (bill) {
-        await updateBill({
+        await updateBillAsync({
           id: bill.id,
-          updates: {
-            ...formData,
-            due_date: new Date(formData.due_date).toISOString(),
-          },
+          updates: formData,
         });
       } else {
-        await createBill({
+        await createBillAsync({
           ...formData,
           user_id: user.id,
-          due_date: new Date(formData.due_date).toISOString(),
         });
       }
       onClose();
     } catch (error) {
-      console.error('Failed to save bill reminder:', error);
-      alert('Failed to save bill reminder. Please try again.');
+      showError(error instanceof Error ? error.message : 'Failed to save bill reminder. Please try again.');
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white text-gray-900 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -136,11 +141,14 @@ export function BillReminderModal({ bill, onClose }: BillReminderModalProps) {
               Account *
             </label>
             <select
-              value={formData.account_id}
+              value={formData.account_id || ''}
               onChange={(e) => setFormData({ ...formData, account_id: parseInt(e.target.value) })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
+              <option value="" disabled>
+                {accounts.length > 0 ? 'Select account' : 'Create an account first'}
+              </option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name} ({account.type})

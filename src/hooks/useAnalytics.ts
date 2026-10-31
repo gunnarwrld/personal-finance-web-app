@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import { useCurrency } from './useCurrency';
+import { parseLocalDate, toLocalDateString } from '@/lib/utils';
 import type {
   AnalyticsPeriod,
   TimeSeriesData,
@@ -87,8 +88,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .eq('type', 'expense')
-        .gte('date', start.toISOString().split('T')[0])
-        .lte('date', end.toISOString().split('T')[0])
+        .gte('date', toLocalDateString(start))
+        .lte('date', toLocalDateString(end))
         .order('date', { ascending: true });
 
       if (accountIds && accountIds.length > 0) {
@@ -106,18 +107,19 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
       // Group transactions by period with currency conversion
       const groupedData: Record<string, number> = {};
       for (const tx of data) {
-        const date = new Date(tx.date);
+        const date = parseLocalDate(tx.date);
         let key: string;
 
         switch (period) {
           case 'daily':
-            key = date.toISOString().split('T')[0];
+            key = toLocalDateString(date);
             break;
-          case 'weekly':
+          case 'weekly': {
             const weekStart = new Date(date);
             weekStart.setDate(date.getDate() - date.getDay());
-            key = weekStart.toISOString().split('T')[0];
+            key = toLocalDateString(weekStart);
             break;
+          }
           case 'monthly':
             key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             break;
@@ -125,11 +127,11 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
             key = String(date.getFullYear());
             break;
           default:
-            key = date.toISOString().split('T')[0];
+            key = toLocalDateString(date);
         }
 
         // Convert to display currency if specified
-        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const accountCurrency = tx.accounts?.currency || 'USD';
         const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
           ? convertAmount(tx.amount, accountCurrency, displayCurrency)
           : tx.amount;
@@ -171,8 +173,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
         .eq('type', 'expense')
-        .gte('date', start.toISOString().split('T')[0])
-        .lte('date', end.toISOString().split('T')[0]);
+        .gte('date', toLocalDateString(start))
+        .lte('date', toLocalDateString(end));
 
       if (accountIds && accountIds.length > 0) {
         query = query.in('account_id', accountIds);
@@ -188,7 +190,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
 
       for (const tx of data) {
         const category = tx.category || 'Uncategorized';
-        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const accountCurrency = tx.accounts?.currency || 'USD';
         const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
           ? convertAmount(tx.amount, accountCurrency, displayCurrency)
           : tx.amount;
@@ -228,8 +230,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .from('transactions')
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
-        .gte('date', start.toISOString().split('T')[0])
-        .lte('date', end.toISOString().split('T')[0]);
+        .gte('date', toLocalDateString(start))
+        .lte('date', toLocalDateString(end));
 
       if (accountIds && accountIds.length > 0) {
         query = query.in('account_id', accountIds);
@@ -243,7 +245,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
       const periodMap: Record<string, { income: number; expenses: number }> = {};
 
       for (const tx of data) {
-        const date = new Date(tx.date);
+        const date = parseLocalDate(tx.date);
         let key: string;
 
         switch (period) {
@@ -261,7 +263,7 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
           periodMap[key] = { income: 0, expenses: 0 };
         }
 
-        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const accountCurrency = tx.accounts?.currency || 'USD';
         const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
           ? convertAmount(tx.amount, accountCurrency, displayCurrency)
           : tx.amount;
@@ -301,8 +303,8 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
         .from('transactions')
         .select('*, accounts!inner(currency)')
         .eq('user_id', user.id)
-        .gte('date', start.toISOString().split('T')[0])
-        .lte('date', end.toISOString().split('T')[0]);
+        .gte('date', toLocalDateString(start))
+        .lte('date', toLocalDateString(end));
 
       if (accountIds && accountIds.length > 0) {
         query = query.in('account_id', accountIds);
@@ -320,14 +322,14 @@ export function useAnalytics(options: UseAnalyticsOptions = {}) {
       }> = {};
 
       for (const tx of data) {
-        const date = new Date(tx.date);
+        const date = parseLocalDate(tx.date);
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
         if (!monthMap[key]) {
           monthMap[key] = { income: 0, expenses: 0, categories: {} };
         }
 
-        const accountCurrency = (tx.accounts as any)?.currency || 'USD';
+        const accountCurrency = tx.accounts?.currency || 'USD';
         const convertedAmount = displayCurrency && displayCurrency !== accountCurrency
           ? convertAmount(tx.amount, accountCurrency, displayCurrency)
           : tx.amount;

@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
+import { getExpenseCategories, getIncomeCategories } from '@/lib/categories';
+import { getCurrency } from '@/lib/currency';
+import { toLocalDateString } from '@/lib/utils';
 import type { TransactionCategory } from '@/types';
 
 interface QuickTransactionModalProps {
@@ -9,9 +12,9 @@ interface QuickTransactionModalProps {
 }
 
 export function QuickTransactionModal({ onClose }: QuickTransactionModalProps) {
-  const { createTransactionAsync } = useTransactions();
-  const { accounts } = useAccounts();
-  const { user } = useAuth();
+  const { createTransactionAsync, isCreating } = useTransactions();
+  const { accounts, isLoading: isLoadingAccounts } = useAccounts();
+  const { success, error: showError } = useToast();
 
   const [formData, setFormData] = useState({
     account_id: accounts[0]?.id || 0,
@@ -19,39 +22,60 @@ export function QuickTransactionModal({ onClose }: QuickTransactionModalProps) {
     category: '' as TransactionCategory | '',
     amount: 0,
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateString(),
   });
 
+  // The FAB can be opened before accounts have loaded; pick the first one
+  // as soon as they arrive.
+  useEffect(() => {
+    if (!formData.account_id && accounts.length > 0) {
+      setFormData((prev) => (prev.account_id ? prev : { ...prev, account_id: accounts[0].id }));
+    }
+  }, [accounts, formData.account_id]);
+
+  // Same category names as the full transaction form and budgets, so quick
+  // entries count towards budgets and analytics.
   const quickCategories = {
-    expense: ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Other'],
-    income: ['Salary', 'Freelance', 'Investment', 'Gift', 'Other'],
+    expense: getExpenseCategories(),
+    income: getIncomeCategories(),
   };
+
+  const selectedAccount = accounts.find((a) => a.id === formData.account_id);
+  const currencySymbol = getCurrency(selectedAccount?.currency || 'USD')?.symbol || '$';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user || !accounts[0]) return;
+
+    if (!selectedAccount) {
+      showError('Create an account first, then add transactions to it.');
+      return;
+    }
+    if (!(formData.amount > 0)) {
+      showError('Enter an amount greater than 0.');
+      return;
+    }
 
     try {
+      const category = (formData.category || 'Other') as TransactionCategory;
       await createTransactionAsync({
-        account_id: formData.account_id,
+        account_id: selectedAccount.id,
         type: formData.type,
-        category: (formData.category || 'Other') as TransactionCategory,
+        category,
         amount: formData.amount,
-        description: formData.description,
-        date: new Date(formData.date).toISOString(),
-        currency: accounts.find(a => a.id === formData.account_id)?.currency || 'USD',
+        // The description column is required; fall back to the category.
+        description: formData.description.trim() || category,
+        date: formData.date,
       });
+      success(`${formData.type === 'income' ? 'Income' : 'Expense'} added`);
       onClose();
     } catch (error) {
-      console.error('Failed to create transaction:', error);
-      alert('Failed to create transaction. Please try again.');
+      showError(error instanceof Error ? error.message : 'Failed to create transaction. Please try again.');
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+      <div className="bg-white text-gray-900 rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">Quick Transaction</h2>
@@ -89,7 +113,7 @@ export function QuickTransactionModal({ onClose }: QuickTransactionModalProps) {
             <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
-                $
+                {currencySymbol}
               </span>
               <input
                 type="number"
@@ -130,11 +154,16 @@ export function QuickTransactionModal({ onClose }: QuickTransactionModalProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Account</label>
             <select
-              value={formData.account_id}
+              value={formData.account_id || ''}
               onChange={(e) => setFormData({ ...formData, account_id: parseInt(e.target.value) })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
+              {accounts.length === 0 && (
+                <option value="" disabled>
+                  {isLoadingAccounts ? 'Loading accounts…' : 'No accounts yet — create one on the Accounts page'}
+                </option>
+              )}
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
@@ -170,7 +199,8 @@ export function QuickTransactionModal({ onClose }: QuickTransactionModalProps) {
           {/* Submit Button */}
           <button
             type="submit"
-            className={`w-full py-3 rounded-lg font-semibold text-white transition-colors ${
+            disabled={isCreating || !selectedAccount}
+            className={`w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               formData.type === 'income'
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-red-600 hover:bg-red-700'

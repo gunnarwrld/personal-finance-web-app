@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { BillReminder, InsertBillReminder, UpdateBillReminder, BillReminderWithStatus } from '@/types';
 import { useAuth } from './useAuth';
+import { parseLocalDate, toLocalDateString } from '@/lib/utils';
 
 const BILLS_QUERY_KEY = ['bill_reminders'];
 
@@ -83,7 +84,7 @@ export function useBillReminders() {
         .from('bill_reminders')
         .update({
           is_paid: true,
-          paid_date: new Date().toISOString().split('T')[0],
+          paid_date: toLocalDateString(),
         })
         .eq('id', id)
         .eq('user_id', user.id)
@@ -120,8 +121,7 @@ export function useBillReminders() {
   const billsWithStatus: BillReminderWithStatus[] = (bills || []).map(bill => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(bill.due_date);
-    dueDate.setHours(0, 0, 0, 0);
+    const dueDate = parseLocalDate(bill.due_date);
     const diffTime = dueDate.getTime() - today.getTime();
     const days_until_due = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const is_overdue = days_until_due < 0 && !bill.is_paid;

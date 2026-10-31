@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useSubscription } from './useSubscription';
 import * as groqService from '@/lib/groq';
+import type { AITransaction } from '@/lib/groq';
 import type { AIInsight, FinancialSnapshot } from '@/types/ai';
 
 export function useAI(currency: string = 'USD') {
@@ -20,7 +21,7 @@ export function useAI(currency: string = 'USD') {
    * Analyze spending patterns
    */
   const analyzeSpendingMutation = useMutation({
-    mutationFn: async (transactions: any[]) => {
+    mutationFn: async (transactions: AITransaction[]) => {
       if (!isAIAvailable) {
         throw new Error('AI features require a Premium subscription');
       }
@@ -85,7 +86,7 @@ export function useAI(currency: string = 'USD') {
    * Predict upcoming expenses
    */
   const predictExpensesMutation = useMutation({
-    mutationFn: async (historicalData: any[]) => {
+    mutationFn: async (historicalData: AITransaction[]) => {
       if (!isAIAvailable) {
         throw new Error('AI features require a Premium subscription');
       }
@@ -150,7 +151,7 @@ export function useAI(currency: string = 'USD') {
    * Find savings opportunities
    */
   const findSavingsMutation = useMutation({
-    mutationFn: async (transactions: any[]) => {
+    mutationFn: async (transactions: AITransaction[]) => {
       if (!isAIAvailable) {
         throw new Error('AI features require a Premium subscription');
       }

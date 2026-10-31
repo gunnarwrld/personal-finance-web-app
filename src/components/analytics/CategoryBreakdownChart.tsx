@@ -36,8 +36,10 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ 
     color: COLORS[index % COLORS.length],
   }));
 
-  const renderCustomLabel = (entry: any) => {
-    return `${entry.percentage.toFixed(1)}%`;
+  const percentageFor = (name: string) => chartData.find((item) => item.name === name)?.percentage ?? 0;
+
+  const renderCustomLabel = ({ name }: { name?: string }) => {
+    return `${percentageFor(name ?? '').toFixed(1)}%`;
   };
 
   return (
@@ -72,9 +74,9 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({ 
           <Legend
             verticalAlign="bottom"
             height={36}
-            formatter={(value, entry: any) => (
+            formatter={(value: string) => (
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                {value} ({entry.payload.percentage.toFixed(1)}%)
+                {value} ({percentageFor(value).toFixed(1)}%)
               </span>
             )}
           />

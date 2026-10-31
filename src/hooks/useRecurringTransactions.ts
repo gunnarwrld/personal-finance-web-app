@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { RecurringTransaction, InsertRecurringTransaction, UpdateRecurringTransaction } from '@/types';
 import { useAuth } from './useAuth';
+import { parseLocalDate } from '@/lib/utils';
 
 const RECURRING_QUERY_KEY = ['recurring_transactions'];
 
@@ -95,8 +96,9 @@ export function useRecurringTransactions() {
 
   // Get upcoming recurring transactions (next 30 days)
   const upcomingRecurring = recurringTransactions?.filter(r => {
-    const nextDate = new Date(r.next_occurrence);
+    const nextDate = parseLocalDate(r.next_occurrence);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 

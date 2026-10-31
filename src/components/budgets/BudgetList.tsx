@@ -5,7 +5,7 @@ import { BudgetModal } from './BudgetModal';
 import type { BudgetWithSpending } from '@/types';
 
 export function BudgetList() {
-  const { budgets, isLoading } = useBudgetsWithSpending();
+  const { budgets, isLoading, currency } = useBudgetsWithSpending();
   const { deleteBudget } = useBudgets();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null);
@@ -76,6 +76,7 @@ export function BudgetList() {
             <BudgetCard
               key={budget.id}
               budget={budget}
+              currency={currency}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />

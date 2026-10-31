@@ -1,4 +1,5 @@
 import type { RecurringTransactionWithAccount } from '@/types';
+import { parseLocalDate } from '@/lib/utils';
 
 interface RecurringTransactionCardProps {
   transaction: RecurringTransactionWithAccount;
@@ -16,7 +17,7 @@ export function RecurringTransactionCard({ transaction, onEdit, onDelete, onTogg
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return parseLocalDate(date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
