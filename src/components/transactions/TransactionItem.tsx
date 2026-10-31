@@ -14,11 +14,29 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, o
   const IconComponent = getCategoryIcon(transaction.category);
   const color = getCategoryColor(transaction.category);
 
+  // Clickable rows open the edit dialog; make them reachable by keyboard too.
+  const interactiveProps = onClick
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        'aria-label': `Edit ${transaction.description}`,
+        onClick: () => onClick(transaction),
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(transaction);
+          }
+        },
+      }
+    : {};
+
   return (
     <div
-      onClick={() => onClick?.(transaction)}
+      {...interactiveProps}
       className={`flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-all ${
-        onClick ? 'cursor-pointer hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700' : ''
+        onClick
+          ? 'cursor-pointer hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500'
+          : ''
       }`}
     >
       {/* Category Icon */}

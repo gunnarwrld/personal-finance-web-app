@@ -11,6 +11,7 @@ import { QuickTransactionFAB } from '@/components/quick';
 // not have to download Recharts and the rest of the app first.
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const AccountsPage = lazy(() => import('@/pages/AccountsPage').then((m) => ({ default: m.AccountsPage })));
+const TransactionsPage = lazy(() => import('@/pages/TransactionsPage').then((m) => ({ default: m.TransactionsPage })));
 const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const BudgetsPage = lazy(() => import('@/pages/BudgetsPage').then((m) => ({ default: m.BudgetsPage })));
@@ -46,6 +47,7 @@ function AppRoutes() {
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/accounts" element={<AccountsPage />} />
+              <Route path="/transactions" element={<TransactionsPage />} />
               <Route path="/budgets" element={<BudgetsPage />} />
               <Route path="/bills" element={<BillsPage />} />
               <Route path="/recurring" element={<RecurringPage />} />

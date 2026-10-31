@@ -16,7 +16,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const userIdRef = useRef<string | null>(null);
+  // undefined until the first auth event: resolving the initial session is
+  // not a change of user, so nothing is cleared for it.
+  const userIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     // INITIAL_SESSION fires once the stored session or the OAuth / magic-link
@@ -28,9 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       const nextUserId = nextSession?.user.id ?? null;
 
-      if (userIdRef.current !== null && userIdRef.current !== nextUserId) {
-        // Signed out or switched accounts: drop everything cached for the
-        // previous user so the next one never sees it.
+      if (userIdRef.current !== undefined && userIdRef.current !== nextUserId) {
+        // Signed out, signed in or switched accounts: drop everything cached
+        // so far, so nothing fetched for (or between) earlier users is shown
+        // to the next one.
         queryClient.clear();
         if ('caches' in window) {
           void caches.delete(SUPABASE_RESPONSE_CACHE);
