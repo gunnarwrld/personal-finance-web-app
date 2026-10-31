@@ -53,8 +53,11 @@ export function AIInsightsModal({ isOpen, onClose, currency = 'USD' }: AIInsight
     if (!selectedType || !transactions || transactions.length === 0) return;
 
     const all = toAITransactions(transactions, currency, rates);
+    // Windows start at local midnight: transaction dates parse as midnight,
+    // so a cutoff carrying the current time would drop the boundary day.
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
 
     try {
       switch (selectedType) {
@@ -103,6 +106,7 @@ export function AIInsightsModal({ isOpen, onClose, currency = 'USD' }: AIInsight
         case 'predictions': {
           const threeMonthsAgo = new Date();
           threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+          threeMonthsAgo.setHours(0, 0, 0, 0);
           await predictExpensesAsync(since(all, threeMonthsAgo));
           break;
         }
