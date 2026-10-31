@@ -8,6 +8,7 @@ import type {
   PaginationParams 
 } from '@/types';
 import { useAuth } from './useAuth';
+import { toLocalDateString } from '@/lib/utils';
 
 const TRANSACTIONS_QUERY_KEY = ['transactions'];
 
@@ -79,38 +80,25 @@ export function useTransactions(
     enabled: !!user,
   });
 
+  // Balance changes happen inside these database functions, in the same
+  // transaction as the ledger write, so a failed or concurrent request can no
+  // longer leave an account balance out of sync with its transactions.
+
   // Create transaction
   const createTransaction = useMutation({
-    mutationFn: async (input: CreateTransactionInput & { currency: string }) => {
+    mutationFn: async (input: CreateTransactionInput) => {
       if (!user) throw new Error('User not authenticated');
 
-      const { data: transaction, error: transactionError } = await supabase
-        .from('transactions')
-        .insert([{ ...input, user_id: user.id }])
-        .select()
-        .single();
+      const { data: transaction, error } = await supabase.rpc('create_transaction', {
+        p_account_id: input.account_id,
+        p_type: input.type,
+        p_amount: input.amount,
+        p_category: input.category,
+        p_description: input.description,
+        p_date: input.date,
+      });
 
-      if (transactionError) throw transactionError;
-
-      // Update account balance
-      const { data: account, error: accountError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('id', input.account_id)
-        .single();
-
-      if (accountError) throw accountError;
-
-      const balanceChange = input.type === 'income' ? input.amount : -input.amount;
-      const newBalance = account.balance + balanceChange;
-
-      const { error: updateError } = await supabase
-        .from('accounts')
-        .update({ balance: newBalance })
-        .eq('id', input.account_id);
-
-      if (updateError) throw updateError;
-
+      if (error) throw error;
       return transaction as Transaction;
     },
     onSuccess: () => {
@@ -121,72 +109,29 @@ export function useTransactions(
 
   // Update transaction
   const updateTransaction = useMutation({
-    mutationFn: async ({ 
-      id, 
-      updates, 
-      oldTransaction 
-    }: { 
-      id: number; 
-      updates: UpdateTransaction; 
+    mutationFn: async ({
+      id,
+      updates,
+      oldTransaction,
+    }: {
+      id: number;
+      updates: UpdateTransaction;
       oldTransaction: Transaction;
     }) => {
       if (!user) throw new Error('User not authenticated');
 
-      // Revert old transaction's effect on balance
-      const oldBalanceChange = oldTransaction.type === 'income' 
-        ? -oldTransaction.amount 
-        : oldTransaction.amount;
+      const { data: transaction, error } = await supabase.rpc('update_transaction', {
+        p_id: id,
+        p_account_id: updates.account_id ?? oldTransaction.account_id,
+        p_type: updates.type ?? oldTransaction.type,
+        p_amount: updates.amount ?? oldTransaction.amount,
+        p_category: updates.category ?? oldTransaction.category,
+        p_description: updates.description ?? oldTransaction.description,
+        p_date: updates.date ?? oldTransaction.date,
+      });
 
-      // Get current account balance
-      const { data: oldAccount, error: oldAccountError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('id', oldTransaction.account_id)
-        .single();
-
-      if (oldAccountError) throw oldAccountError;
-
-      const { error: revertError } = await supabase
-        .from('accounts')
-        .update({ balance: oldAccount.balance + oldBalanceChange })
-        .eq('id', oldTransaction.account_id);
-
-      if (revertError) throw revertError;
-
-      // Update transaction
-      const { data: transaction, error: transactionError } = await supabase
-        .from('transactions')
-        .update(updates)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (transactionError) throw transactionError;
-
-      // Apply new transaction's effect on balance
-      const newTransaction = transaction as Transaction;
-      const newBalanceChange = newTransaction.type === 'income'
-        ? newTransaction.amount
-        : -newTransaction.amount;
-
-      // Get current account balance for new account
-      const { data: newAccount, error: newAccountError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('id', newTransaction.account_id)
-        .single();
-
-      if (newAccountError) throw newAccountError;
-
-      const { error: updateError } = await supabase
-        .from('accounts')
-        .update({ balance: newAccount.balance + newBalanceChange })
-        .eq('id', newTransaction.account_id);
-
-      if (updateError) throw updateError;
-
-      return newTransaction;
+      if (error) throw error;
+      return transaction as Transaction;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY });
@@ -199,33 +144,7 @@ export function useTransactions(
     mutationFn: async (transaction: Transaction) => {
       if (!user) throw new Error('User not authenticated');
 
-      // Revert transaction's effect on balance
-      const balanceChange = transaction.type === 'income'
-        ? -transaction.amount
-        : transaction.amount;
-
-      // Get current account balance
-      const { data: account, error: accountError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('id', transaction.account_id)
-        .single();
-
-      if (accountError) throw accountError;
-
-      const { error: balanceError } = await supabase
-        .from('accounts')
-        .update({ balance: account.balance + balanceChange })
-        .eq('id', transaction.account_id);
-
-      if (balanceError) throw balanceError;
-
-      // Delete transaction
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', transaction.id)
-        .eq('user_id', user.id);
+      const { error } = await supabase.rpc('delete_transaction', { p_id: transaction.id });
 
       if (error) throw error;
     },
@@ -240,7 +159,7 @@ export function useTransactions(
   const totalPages = data?.total_pages || 1;
 
   // Calculate monthly statistics
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = toLocalDateString().slice(0, 7);
   const monthlyTransactions = transactions.filter(t => t.date.startsWith(currentMonth));
   
   const monthlyIncome = monthlyTransactions

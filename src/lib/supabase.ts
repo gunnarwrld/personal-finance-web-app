@@ -16,6 +16,10 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// Where OAuth, magic links and confirmation emails send the user back to.
+// Must be allowed under Authentication → URL Configuration in Supabase.
+const authRedirectUrl = () => `${window.location.origin}/dashboard`;
+
 // Helper to get current user
 export const getCurrentUser = async () => {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -31,16 +35,10 @@ export const signOut = async () => {
 
 // Helper to sign in with Google
 export const signInWithGoogle = async () => {
-  // Use localhost for development, production URL for deployed version
-  const isDevelopment = window.location.hostname === 'localhost';
-  const redirectUrl = isDevelopment 
-    ? `http://localhost:${window.location.port}/dashboard`
-    : `${window.location.origin}/dashboard`;
-  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: redirectUrl,
+      redirectTo: authRedirectUrl(),
     },
   });
   if (error) throw error;
@@ -49,15 +47,10 @@ export const signInWithGoogle = async () => {
 
 // Helper to sign in with Apple
 export const signInWithApple = async () => {
-  const isDevelopment = window.location.hostname === 'localhost';
-  const redirectUrl = isDevelopment 
-    ? `http://localhost:${window.location.port}/dashboard`
-    : `${window.location.origin}/dashboard`;
-  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {
-      redirectTo: redirectUrl,
+      redirectTo: authRedirectUrl(),
     },
   });
   if (error) throw error;
@@ -85,7 +78,7 @@ export const signUpWithEmail = async (email: string, password?: string) => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: authRedirectUrl(),
       }
     });
     if (error) throw error;
@@ -100,9 +93,35 @@ export const signInWithOtp = async (email: string) => {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/dashboard`,
+      emailRedirectTo: authRedirectUrl(),
     },
   });
   if (error) throw error;
   return data;
+};
+
+export interface AuthProviderSettings {
+  email: boolean;
+  google: boolean;
+  apple: boolean;
+}
+
+/**
+ * Which sign-in methods are switched on for this Supabase project. A button
+ * for a provider that is off sends the user to a raw "provider is not
+ * enabled" error page, so the auth page only shows enabled ones.
+ */
+export const getAuthProviderSettings = async (): Promise<AuthProviderSettings> => {
+  const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+    headers: { apikey: supabaseAnonKey },
+  });
+  if (!response.ok) {
+    throw new Error(`Auth settings request failed with status ${response.status}`);
+  }
+  const settings = await response.json();
+  return {
+    email: !!settings.external?.email,
+    google: !!settings.external?.google,
+    apple: !!settings.external?.apple,
+  };
 };

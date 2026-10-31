@@ -6,20 +6,19 @@
 export const GROQ_CONFIG = {
   model: 'llama-3.3-70b-versatile', // Fast and capable model for financial analysis
   
-  // Model alternatives for different use cases
+  // Model alternatives for different use cases. Keep in sync with
+  // ALLOWED_MODELS in supabase/functions/groq-proxy/index.ts.
   models: {
     fast: 'llama-3.1-8b-instant',      // Quick responses
     balanced: 'llama-3.3-70b-versatile',     // Best quality/speed balance
-    creative: 'llama-3.1-70b-versatile', // More creative responses
   },
   
   // Default parameters
   temperature: 0.7, // Balanced creativity
   maxTokens: 1024,  // Response length limit
   
-  // Rate limiting
-  maxRequestsPerMinute: 30,
-  maxRequestsPerDay: 14400,
+  // Client-side guard; the edge function enforces 5/min per user.
+  maxRequestsPerMinute: 5,
 } as const;
 
 export type GroqModel = keyof typeof GROQ_CONFIG.models;
@@ -27,7 +26,7 @@ export type GroqModel = keyof typeof GROQ_CONFIG.models;
 // AI Feature prompts
 export const AI_PROMPTS = {
   // Spending analysis
-  analyzeSpending: (data: any, currency: string) => `
+  analyzeSpending: (data: unknown, currency: string) => `
 You are a financial advisor analyzing spending patterns. 
 Currency: ${currency}
 
@@ -44,7 +43,7 @@ Keep response under 300 words, use bullet points, be specific with amounts in ${
 `,
 
   // Budget recommendations
-  recommendBudget: (income: number, expenses: any, currency: string) => `
+  recommendBudget: (income: number, expenses: Record<string, number>, currency: string) => `
 You are a financial advisor creating budget recommendations.
 Currency: ${currency}
 Monthly Income: ${currency}${income}
@@ -62,7 +61,7 @@ Keep response under 250 words, use ${currency} for all amounts.
 `,
 
   // Expense predictions
-  predictExpenses: (historicalData: any, currency: string) => `
+  predictExpenses: (historicalData: unknown, currency: string) => `
 You are a financial analyst predicting upcoming expenses.
 Currency: ${currency}
 
@@ -79,7 +78,7 @@ Keep response under 200 words, use ${currency} for predictions.
 `,
 
   // General financial advice
-  financialAdvice: (financialSnapshot: any, currency: string, userGoal?: string) => `
+  financialAdvice: (financialSnapshot: unknown, currency: string, userGoal?: string) => `
 You are a personal finance coach providing tailored advice.
 Currency: ${currency}
 
@@ -98,7 +97,7 @@ Keep response under 300 words, be encouraging but realistic, use ${currency}.
 `,
 
   // Savings opportunities
-  findSavings: (transactions: any, currency: string) => `
+  findSavings: (transactions: unknown, currency: string) => `
 You are a savings expert analyzing spending to find savings opportunities.
 Currency: ${currency}
 
@@ -115,7 +114,7 @@ Keep response under 250 words, be specific with ${currency} amounts.
 `,
 
   // Goal planning
-  planGoal: (goal: any, currentSavings: number, currency: string) => `
+  planGoal: (goal: { name: string; target_amount: number; target_date?: string }, currentSavings: number, currency: string) => `
 You are a financial planner helping achieve a savings goal.
 Currency: ${currency}
 

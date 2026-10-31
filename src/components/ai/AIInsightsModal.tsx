@@ -8,6 +8,10 @@ import { X, Sparkles, TrendingUp, Lightbulb, DollarSign, AlertCircle, Loader2 } 
 import { Button } from '@/components/ui/Button';
 import { useAI } from '@/hooks/useAI';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useToast } from '@/hooks/useToast';
+import { toAITransactions, type AITransaction } from '@/lib/groq';
+import { parseLocalDate } from '@/lib/utils';
 
 interface AIInsightsModalProps {
   isOpen: boolean;
@@ -22,107 +26,92 @@ export function AIInsightsModal({ isOpen, onClose, currency = 'USD' }: AIInsight
   const [userGoal, setUserGoal] = useState('');
   
   const { transactions } = useTransactions();
+  const { rates } = useCurrency();
+  const { error: showError } = useToast();
   
   const {
     insights,
     isLoading,
-    analyzeSpending,
-    getBudgetRecommendations,
-    findSavings,
-    getFinancialAdvice,
-    predictExpenses,
+    analyzeSpendingAsync,
+    getBudgetRecommendationsAsync,
+    findSavingsAsync,
+    getFinancialAdviceAsync,
+    predictExpensesAsync,
     clearInsights,
   } = useAI(currency);
 
   if (!isOpen) return null;
 
-  const handleGenerateInsight = () => {
-    if (!selectedType) return;
+  // Amounts are stored positive; `type` says whether money came in or went out.
+  const sumBy = (items: AITransaction[], type: AITransaction['type']) =>
+    items.filter((t) => t.type === type).reduce((sum, t) => sum + t.amount, 0);
 
-    switch (selectedType) {
-      case 'spending':
-        if (transactions && transactions.length > 0) {
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          const recentTransactions = transactions.filter(
-            (t: any) => new Date(t.transaction_date) >= thirtyDaysAgo
-          );
-          analyzeSpending(recentTransactions);
+  const since = (items: AITransaction[], from: Date) =>
+    items.filter((t) => parseLocalDate(t.date) >= from);
+
+  const handleGenerateInsight = async () => {
+    if (!selectedType || !transactions || transactions.length === 0) return;
+
+    const all = toAITransactions(transactions, currency, rates);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    try {
+      switch (selectedType) {
+        case 'spending': {
+          const recent = since(all, thirtyDaysAgo);
+          if (recent.length === 0) {
+            showError('No transactions found in the last 30 days');
+            return;
+          }
+          await analyzeSpendingAsync(recent);
+          break;
         }
-        break;
-        
-      case 'budget':
-        if (transactions && transactions.length > 0) {
-          // Calculate monthly income and expenses by category
+
+        case 'budget': {
           const now = new Date();
-          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-          const monthlyTx = transactions.filter(
-            (t: any) => new Date(t.transaction_date) >= firstDayOfMonth
-          );
-          
-          const income = monthlyTx
-            .filter((t: any) => t.amount > 0)
-            .reduce((sum: number, t: any) => sum + t.amount, 0);
-            
+          const monthly = since(all, new Date(now.getFullYear(), now.getMonth(), 1));
+          if (monthly.length === 0) {
+            showError('No transactions found this month');
+            return;
+          }
           const expenses: Record<string, number> = {};
-          monthlyTx
-            .filter((t: any) => t.amount < 0)
-            .forEach((t: any) => {
-              const category = t.category || 'Uncategorized';
-              expenses[category] = (expenses[category] || 0) + Math.abs(t.amount);
+          monthly
+            .filter((t) => t.type === 'expense')
+            .forEach((t) => {
+              expenses[t.category] = (expenses[t.category] || 0) + t.amount;
             });
-            
-          getBudgetRecommendations({ monthlyIncome: income, expenses });
+          await getBudgetRecommendationsAsync({ monthlyIncome: sumBy(monthly, 'income'), expenses });
+          break;
         }
-        break;
-        
-      case 'savings':
-        if (transactions && transactions.length > 0) {
-          findSavings(transactions.slice(0, 50));
-        }
-        break;
-        
-      case 'advice':
-        if (transactions && transactions.length > 0) {
-          // Calculate financial snapshot
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          const recentTransactions = transactions.filter(
-            (t: any) => new Date(t.transaction_date) >= thirtyDaysAgo
-          );
-          
-          const income = recentTransactions
-            .filter((t: any) => t.amount > 0)
-            .reduce((sum: number, t: any) => sum + t.amount, 0);
-            
-          const expenses = Math.abs(recentTransactions
-            .filter((t: any) => t.amount < 0)
-            .reduce((sum: number, t: any) => sum + t.amount, 0));
-            
-          const savings = income - expenses;
-          
-          getFinancialAdvice({ 
-            financialSnapshot: { income, expenses, savings },
-            userGoal: userGoal || undefined
+
+        case 'savings':
+          await findSavingsAsync(all.slice(0, 50));
+          break;
+
+        case 'advice': {
+          const recent = since(all, thirtyDaysAgo);
+          const income = sumBy(recent, 'income');
+          const expenses = sumBy(recent, 'expense');
+          await getFinancialAdviceAsync({
+            financialSnapshot: { income, expenses, savings: income - expenses },
+            userGoal: userGoal || undefined,
           });
+          break;
         }
-        break;
-        
-      case 'predictions':
-        if (transactions && transactions.length > 0) {
-          // Get last 3 months of data
+
+        case 'predictions': {
           const threeMonthsAgo = new Date();
           threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-          const historicalData = transactions.filter(
-            (t: any) => new Date(t.transaction_date) >= threeMonthsAgo
-          );
-          predictExpenses(historicalData);
+          await predictExpensesAsync(since(all, threeMonthsAgo));
+          break;
         }
-        break;
+      }
+      setSelectedType(null);
+      setUserGoal('');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to generate insights');
     }
-    
-    setSelectedType(null);
-    setUserGoal('');
   };
 
   const insightOptions = [

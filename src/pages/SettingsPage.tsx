@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, Button, Select } from '@/comp
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { useToast } from '@/hooks/useToast';
 // FREE-MODE: useSubscription no longer needed
 // import { useSubscription } from '@/hooks/useSubscription';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
@@ -16,6 +17,7 @@ export const SettingsPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const { isRefreshing, refreshRatesAsync } = useCurrency();
   const { preferences, updatePreferencesAsync, isUpdating } = useUserPreferences();
+  const { success, error: showError } = useToast();
   // FREE-MODE: Subscription state removed
   // const { 
   //   subscription, 
@@ -41,15 +43,24 @@ export const SettingsPage: React.FC = () => {
     try {
       await updatePreferencesAsync({ display_currency: e.target.value });
     } catch (error) {
-      console.error('Failed to update currency:', error);
+      showError(error instanceof Error ? error.message : 'Failed to update currency');
     }
   };
 
   const handleRefreshRates = async () => {
     try {
       await refreshRatesAsync();
+      success('Exchange rates updated');
     } catch (error) {
-      console.error('Failed to refresh rates:', error);
+      showError(error instanceof Error ? error.message : 'Failed to refresh exchange rates');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Failed to sign out');
     }
   };
 
@@ -164,7 +175,7 @@ export const SettingsPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Button
-            onClick={signOut}
+            onClick={handleSignOut}
             variant="danger"
             leftIcon={<LogOut className="h-4 w-4" />}
           >

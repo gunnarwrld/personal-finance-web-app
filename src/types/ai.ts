@@ -31,9 +31,9 @@ export interface AIRequestStatus {
 }
 
 export interface AIAnalysisData {
-  transactions: any[];
-  budgets?: any[];
-  goals?: any[];
+  transactions: unknown[];
+  budgets?: unknown[];
+  goals?: unknown[];
   currency: string;
 }
 

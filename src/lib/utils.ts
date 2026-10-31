@@ -24,6 +24,28 @@ export function formatDate(dateString: string, formatString: string = 'MMM d, yy
 }
 
 /**
+ * Calendar date (YYYY-MM-DD) in the user's own timezone. Use this instead of
+ * `toISOString().split('T')[0]`, which gives the UTC date and is a day off
+ * for several hours every day outside UTC.
+ */
+export function toLocalDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Parse a date-only value (YYYY-MM-DD, as stored in `date` columns) as local
+ * midnight. `new Date('2026-10-01')` is UTC midnight, which is still
+ * September 30 anywhere west of UTC.
+ */
+export function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+/**
  * Get relative time (e.g., "2 hours ago")
  */
 export function getRelativeTime(dateString: string): string {

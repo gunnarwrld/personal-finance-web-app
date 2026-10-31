@@ -1,4 +1,5 @@
 import type { BillReminderWithStatus } from '@/types';
+import { parseLocalDate } from '@/lib/utils';
 
 interface BillReminderCardProps {
   bill: BillReminderWithStatus;
@@ -45,7 +46,7 @@ export function BillReminderCard({ bill, onEdit, onDelete, onMarkPaid }: BillRem
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return parseLocalDate(date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

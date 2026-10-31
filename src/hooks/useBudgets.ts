@@ -2,6 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Budget, InsertBudget, UpdateBudget, BudgetWithSpending } from '@/types';
 import { useAuth } from './useAuth';
+import { useCurrency } from './useCurrency';
+import { useUserPreferences } from './useUserPreferences';
+import { convertCurrency } from '@/lib/currency';
+import { toLocalDateString } from '@/lib/utils';
 
 const BUDGETS_QUERY_KEY = ['budgets'];
 
@@ -110,10 +114,15 @@ export function useBudgets() {
 export function useBudgetsWithSpending(startDate?: string, endDate?: string) {
   const { user } = useAuth();
   const { budgets, isLoading: isBudgetsLoading } = useBudgets();
+  const { rates } = useCurrency();
+  const { preferences } = useUserPreferences();
+  // Budgets are set in the user's display currency; expenses from accounts in
+  // other currencies are converted before they are compared.
+  const currency = preferences?.display_currency || 'USD';
 
   // Fetch spending for the current period
   const {
-    data: spending,
+    data: expenses,
     isLoading: isSpendingLoading,
   } = useQuery({
     queryKey: ['budget-spending', startDate, endDate],
@@ -121,34 +130,34 @@ export function useBudgetsWithSpending(startDate?: string, endDate?: string) {
       if (!user) throw new Error('User not authenticated');
 
       // Get current month if no dates provided
-      const start = startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-      const end = endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+      const now = new Date();
+      const start = startDate || toLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+      const end = endDate || toLocalDateString(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
       const { data, error } = await supabase
         .from('transactions')
-        .select('category, amount')
+        .select('category, amount, currency')
         .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('date', start)
         .lte('date', end);
 
       if (error) throw error;
-
-      // Group by category and sum amounts
-      const spendingByCategory = (data || []).reduce((acc, transaction) => {
-        const category = transaction.category;
-        acc[category] = (acc[category] || 0) + transaction.amount;
-        return acc;
-      }, {} as Record<string, number>);
-
-      return spendingByCategory;
+      return data || [];
     },
     enabled: !!user,
   });
 
+  // Group by category and sum amounts in the display currency
+  const spending = (expenses || []).reduce((acc, transaction) => {
+    const amount = convertCurrency(transaction.amount, transaction.currency || currency, currency, rates);
+    acc[transaction.category] = (acc[transaction.category] || 0) + amount;
+    return acc;
+  }, {} as Record<string, number>);
+
   // Combine budgets with spending data
   const budgetsWithSpending: BudgetWithSpending[] = budgets.map(budget => {
-    const spent = spending?.[budget.category] || 0;
+    const spent = spending[budget.category] || 0;
     const remaining = budget.amount - spent;
     const percentage = (spent / budget.amount) * 100;
     const isOverBudget = spent > budget.amount;
@@ -165,6 +174,7 @@ export function useBudgetsWithSpending(startDate?: string, endDate?: string) {
   return {
     budgets: budgetsWithSpending,
     isLoading: isBudgetsLoading || isSpendingLoading,
-    spending: spending || {},
+    spending,
+    currency,
   };
 }

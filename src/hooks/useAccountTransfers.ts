@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { AccountTransfer, InsertAccountTransfer, UpdateAccountTransfer } from '@/types';
+import type { AccountTransfer, CreateAccountTransferInput, UpdateAccountTransfer } from '@/types';
 import { useAuth } from './useAuth';
 import { useCurrency } from './useCurrency';
+import { toLocalDateString } from '@/lib/utils';
 
 const TRANSFERS_QUERY_KEY = ['account_transfers'];
 
@@ -37,83 +38,36 @@ export function useAccountTransfers() {
     enabled: !!user,
   });
 
+  // Balance changes happen inside these database functions, in the same
+  // transaction as the transfer row, so the two accounts cannot drift apart.
+
   // Create transfer
   const createTransfer = useMutation({
-    mutationFn: async (input: InsertAccountTransfer) => {
+    mutationFn: async (input: CreateAccountTransferInput) => {
       if (!user) throw new Error('User not authenticated');
 
-      // Get account details to determine currencies
-      const { data: fromAccount, error: fromError } = await supabase
+      // The database uses rate 1 when both accounts share a currency.
+      const { data: accounts, error: accountsError } = await supabase
         .from('accounts')
-        .select('currency, balance')
-        .eq('id', input.from_account_id)
-        .single();
+        .select('id, currency')
+        .in('id', [input.from_account_id, input.to_account_id]);
 
-      if (fromError) throw fromError;
+      if (accountsError) throw accountsError;
 
-      const { data: toAccount, error: toError } = await supabase
-        .from('accounts')
-        .select('currency')
-        .eq('id', input.to_account_id)
-        .single();
+      const fromCurrency = accounts?.find((a) => a.id === input.from_account_id)?.currency || 'USD';
+      const toCurrency = accounts?.find((a) => a.id === input.to_account_id)?.currency || 'USD';
+      const exchangeRate = (rates[toCurrency] || 1) / (rates[fromCurrency] || 1);
 
-      if (toError) throw toError;
+      const { data: transfer, error } = await supabase.rpc('create_account_transfer', {
+        p_from_account_id: input.from_account_id,
+        p_to_account_id: input.to_account_id,
+        p_amount: input.amount,
+        p_exchange_rate: exchangeRate,
+        p_description: input.description,
+        p_transfer_date: input.transfer_date ?? toLocalDateString(),
+      });
 
-      // Calculate exchange rate and converted amount
-      const fromCurrency = input.from_currency || fromAccount.currency;
-      const toCurrency = input.to_currency || toAccount.currency;
-      
-      let exchange_rate = 1.0;
-      let converted_amount = input.amount;
-
-      if (fromCurrency !== toCurrency) {
-        const fromRate = rates[fromCurrency] || 1;
-        const toRate = rates[toCurrency] || 1;
-        exchange_rate = toRate / fromRate;
-        converted_amount = input.amount * exchange_rate;
-      }
-
-      // Create transfer record
-      const { data: transfer, error: transferError } = await supabase
-        .from('account_transfers')
-        .insert([{
-          ...input,
-          user_id: user.id,
-          from_currency: fromCurrency,
-          to_currency: toCurrency,
-          exchange_rate,
-          converted_amount,
-        }])
-        .select()
-        .single();
-
-      if (transferError) throw transferError;
-
-      // Update balances
-      // Deduct from source account
-      const { error: deductError } = await supabase
-        .from('accounts')
-        .update({ balance: fromAccount.balance - input.amount })
-        .eq('id', input.from_account_id);
-
-      if (deductError) throw deductError;
-
-      // Add to destination account
-      const { data: toAccountBalance, error: toBalanceError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('id', input.to_account_id)
-        .single();
-
-      if (toBalanceError) throw toBalanceError;
-
-      const { error: addError } = await supabase
-        .from('accounts')
-        .update({ balance: toAccountBalance.balance + converted_amount })
-        .eq('id', input.to_account_id);
-
-      if (addError) throw addError;
-
+      if (error) throw error;
       return transfer as AccountTransfer;
     },
     onSuccess: () => {
@@ -122,14 +76,15 @@ export function useAccountTransfers() {
     },
   });
 
-  // Update transfer
+  // Update transfer details. Amounts and accounts are fixed once created:
+  // delete and recreate the transfer to change them, so balances stay right.
   const updateTransfer = useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: UpdateAccountTransfer }) => {
+    mutationFn: async ({ id, updates }: { id: number; updates: Pick<UpdateAccountTransfer, 'description' | 'transfer_date'> }) => {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
         .from('account_transfers')
-        .update(updates)
+        .update({ description: updates.description, transfer_date: updates.transfer_date })
         .eq('id', id)
         .eq('user_id', user.id)
         .select()
@@ -148,45 +103,7 @@ export function useAccountTransfers() {
     mutationFn: async (transfer: AccountTransfer) => {
       if (!user) throw new Error('User not authenticated');
 
-      // Revert balances
-      // Add back to source account
-      const { data: fromAccount, error: fromError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('id', transfer.from_account_id)
-        .single();
-
-      if (fromError) throw fromError;
-
-      const { error: revertFromError } = await supabase
-        .from('accounts')
-        .update({ balance: fromAccount.balance + transfer.amount })
-        .eq('id', transfer.from_account_id);
-
-      if (revertFromError) throw revertFromError;
-
-      // Deduct from destination account
-      const { data: toAccount, error: toError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('id', transfer.to_account_id)
-        .single();
-
-      if (toError) throw toError;
-
-      const { error: revertToError } = await supabase
-        .from('accounts')
-        .update({ balance: toAccount.balance - transfer.converted_amount })
-        .eq('id', transfer.to_account_id);
-
-      if (revertToError) throw revertToError;
-
-      // Delete transfer record
-      const { error } = await supabase
-        .from('account_transfers')
-        .delete()
-        .eq('id', transfer.id)
-        .eq('user_id', user.id);
+      const { error } = await supabase.rpc('delete_account_transfer', { p_id: transfer.id });
 
       if (error) throw error;
     },
