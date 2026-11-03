@@ -23,7 +23,7 @@ export const TransactionsPage: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [searchInput]);
 
-  const { transactions, count, totalPages, isLoading } = useTransactions(
+  const { transactions, count, totalPages, isLoading, isPlaceholderData } = useTransactions(
     search ? { search } : undefined,
     { page, limit: PAGE_SIZE }
   );
@@ -70,7 +70,10 @@ export const TransactionsPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div
+            className={`space-y-2 transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}
+            aria-busy={isPlaceholderData}
+          >
             {transactions.map((transaction) => (
               <TransactionItem
                 key={transaction.id}
