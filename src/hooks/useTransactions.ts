@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { 
   Transaction, 
@@ -23,6 +23,7 @@ export function useTransactions(
   const {
     data,
     isLoading,
+    isPlaceholderData,
     error,
     refetch,
   } = useQuery({
@@ -78,6 +79,9 @@ export function useTransactions(
       };
     },
     enabled: !!user,
+    // When the page or search changes, keep showing the previous results (and
+    // their page count) until the new ones arrive, instead of an empty list.
+    placeholderData: keepPreviousData,
   });
 
   // Balance changes happen inside these database functions, in the same
@@ -175,6 +179,8 @@ export function useTransactions(
     count,
     totalPages,
     isLoading,
+    /** True while the previous page/search is shown and the new one loads. */
+    isPlaceholderData,
     error,
     monthlyIncome,
     monthlyExpenses,
