@@ -1,5 +1,7 @@
 # Project Status - Personal Finance Web App
 
+> **Historical snapshot from October 2025.** Some items below, including the Stripe integration and "Production Ready", describe plans that were not deployed. For the current state, see the Status note at the top of [README.md](README.md).
+
 **Date**: October 29, 2025  
 **Status**: ✅ Production Ready - Private Project
 
