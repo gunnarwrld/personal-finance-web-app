@@ -1,10 +1,12 @@
 # FinanceTracker
 
-> Smart personal finance management with multi-currency support, AI-powered insights, and Stripe-powered premium subscriptions.
+> Smart personal finance management with multi-currency support, AI-powered insights, and a premium tier designed around Stripe subscriptions.
+
+> **Status (November 2026):** the [live demo](https://personal-finance-web-app-psi.vercel.app) runs in **free mode**. Payments are not enabled: the Stripe checkout, portal and webhook handlers are documented in `docs/STRIPE_SETUP.md` but not deployed, and `isPremium` in `src/hooks/useSubscription.ts` returns `true`, so every signed-in user gets the premium features. There is no automated test suite yet; `npm run type-check` and `npm run lint` are the checks.
 
 ## Overview
 
-FinanceTracker is a full-featured personal finance web application built with React and TypeScript. It connects to Supabase for authentication and data persistence, uses Stripe for subscription payments, and integrates Groq AI for intelligent financial insights. The app is installable as a Progressive Web App (PWA).
+FinanceTracker is a full-featured personal finance web application built with React and TypeScript. It connects to Supabase for authentication and data persistence, is designed to use Stripe for subscription payments (not enabled yet), and integrates Groq AI for intelligent financial insights. The app is installable as a Progressive Web App (PWA).
 
 ## Features
 
@@ -17,7 +19,7 @@ FinanceTracker is a full-featured personal finance web application built with Re
 - **Progressive Web App** — Installable on mobile and desktop with offline support
 - **Dark Mode** — System-aware theme with manual toggle
 
-### Premium Tier ($9.99/mo or $99.99/yr)
+### Premium Tier (planned pricing: $9.99/mo or $99.99/yr; currently free for everyone)
 - **Advanced Analytics** — Interactive charts (spending trends, category breakdown, income vs expenses) powered by Recharts
 - **AI-Powered Insights** — Financial analysis using Groq API (spending patterns, budget recommendations, savings opportunities, expense predictions, personalized advice)
 - **Budget Tracking** — Set and monitor category-based budgets with progress bars and alerts
@@ -262,4 +264,4 @@ Key measures:
 
 **License**: Private — All rights reserved
 
-**Last Updated**: April 2026
+**Last Updated**: November 2026
