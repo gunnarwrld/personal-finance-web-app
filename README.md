@@ -2,6 +2,8 @@
 
 > A free personal finance tracker: enter your accounts, transactions, budgets and bills by hand, in any of 8 currencies, with on-demand AI insights.
 
+**Live demo:** https://personal-finance-web-app-psi.vercel.app
+
 ## Overview
 
 FinanceTracker is a free personal finance web application built with React and TypeScript. There are no plans, payments or feature limits: every feature below is available to every account. Supabase handles authentication and data persistence, and Groq AI provides financial insights when you ask for them. The app is installable as a Progressive Web App (PWA).
