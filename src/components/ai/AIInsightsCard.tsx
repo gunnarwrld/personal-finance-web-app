@@ -4,9 +4,7 @@
  */
 
 import { useState } from 'react';
-// FREE-MODE: useNavigate no longer needed (was used by premium upsell CTA)
-// import { useNavigate } from 'react-router-dom';
-import { Sparkles, TrendingUp, Lightbulb, AlertCircle, Loader2, X } from 'lucide-react';
+import { Sparkles, TrendingUp, Lightbulb, Loader2, X } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAI } from '@/hooks/useAI';
@@ -16,20 +14,14 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { toAITransactions } from '@/lib/groq';
 import { parseLocalDate } from '@/lib/utils';
-// FREE-MODE: useSubscription no longer needed here
-// import { useSubscription } from '@/hooks/useSubscription';
 
 export function AIInsightsCard() {
-  // FREE-MODE: isPremium check removed
-  // const { isPremium } = useSubscription();
   const { transactions } = useTransactions();
   const { preferences } = useUserPreferences();
   const { rates } = useCurrency();
   const currency = preferences?.display_currency || 'USD';
-  // const navigate = useNavigate(); // FREE-MODE: unused
-  const { 
-    insights, 
-    isAIAvailable, 
+  const {
+    insights,
     analyzeSpendingAsync,
     isAnalyzingSpending,
     findSavingsAsync,
@@ -72,29 +64,6 @@ export function AIInsightsCard() {
       }
     }
   };
-
-  // FREE-MODE: Premium upsell card removed — AI always accessible
-  // ORIGINAL: if (!isPremium) { return ( ... upgrade CTA ... ); }
-
-  if (!isAIAvailable) {
-    return (
-      <Card className="border-yellow-200 dark:border-yellow-800">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              AI Insights Unavailable
-            </h3>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            AI features are not configured. Please add your Groq API key to enable AI insights.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const isLoading = isAnalyzingSpending || isFindingSavings;
 

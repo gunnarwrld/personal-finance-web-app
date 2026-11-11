@@ -5,15 +5,11 @@ import { SpendingTrendsChart, CategoryBreakdownChart, IncomeExpenseChart } from 
 import { AIInsightsModal } from '@/components/ai';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
-// FREE-MODE: useSubscription no longer needed
-// import { useSubscription } from '@/hooks/useSubscription';
 import { toLocalDateString } from '@/lib/utils';
 import type { AnalyticsPeriod } from '@/types';
 
 export const AnalyticsPage: React.FC = () => {
   const { preferences } = useUserPreferences();
-  // FREE-MODE: isPremium check removed
-  // const { isPremium } = useSubscription();
   const [period, setPeriod] = useState<AnalyticsPeriod>('monthly');
   const [showAIModal, setShowAIModal] = useState(false);
   const displayCurrency = preferences?.display_currency || 'USD';
@@ -99,24 +95,21 @@ export const AnalyticsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          {/* FREE-MODE: AI & Export buttons always shown */}
-          {/* ORIGINAL: {isPremium && ( */}
-              <Button
-                onClick={() => setShowAIModal(true)}
-                variant="primary"
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                leftIcon={<Sparkles className="h-4 w-4" />}
-              >
-                Ask AI
-              </Button>
-              <Button
-                onClick={handleExport}
-                variant="outline"
-                leftIcon={<Download className="h-4 w-4" />}
-              >
-                Export
-              </Button>
-          {/* ORIGINAL: )} */}
+          <Button
+            onClick={() => setShowAIModal(true)}
+            variant="primary"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            leftIcon={<Sparkles className="h-4 w-4" />}
+          >
+            Ask AI
+          </Button>
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            leftIcon={<Download className="h-4 w-4" />}
+          >
+            Export
+          </Button>
         </div>
       </div>
 
@@ -253,27 +246,6 @@ export const AnalyticsPage: React.FC = () => {
           </div>
         </>
       )}
-
-      {/* FREE-MODE: Premium Upgrade Prompt hidden */}
-      {/* ORIGINAL:
-      {!isPremium && (
-        <Card className="border-2 border-yellow-500 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Unlock Premium Analytics
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Get access to advanced insights, export capabilities, and AI-powered financial advice
-              </p>
-              <Button variant="primary" className="bg-gradient-to-r from-yellow-500 to-orange-500">
-                Upgrade to Premium
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      */}
 
       {/* AI Insights Modal */}
       <AIInsightsModal 
