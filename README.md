@@ -2,7 +2,7 @@
 
 > Smart personal finance management with multi-currency support, AI-powered insights, and a premium tier designed around Stripe subscriptions.
 
-> **Status (November 2026):** the [live demo](https://personal-finance-web-app-psi.vercel.app) runs in **free mode**. Payments are not enabled: the Stripe checkout, portal and webhook handlers are documented in `docs/STRIPE_SETUP.md` but not deployed, and `isPremium` in `src/hooks/useSubscription.ts` returns `true`, so every signed-in user gets the premium features. There is no automated test suite yet; `npm run type-check` and `npm run lint` are the checks.
+> **Status (November 2026):** the [live demo](https://personal-finance-web-app-psi.vercel.app) runs in **free mode**. Payments are not enabled: the Stripe checkout, portal and webhook handlers are documented in `docs/STRIPE_SETUP.md` but not deployed, and `isPremium` in `src/hooks/useSubscription.ts` returns `true`, so every signed-in user gets the premium features. `npm run type-check` and `npm run lint` check the frontend; `npm run test:db` runs the database tests (see [Database tests](#database-tests)).
 
 ## Overview
 
@@ -108,7 +108,7 @@ supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-For a local database, `supabase start` followed by `supabase db reset` applies the same files. After changing the schema, regenerate the types with `supabase gen types typescript --linked > src/types/database.types.ts`.
+For a local database, `supabase start` followed by `supabase db reset` applies the same files and loads the demo data in `supabase/seed.sql`. After changing the schema, regenerate the types with `supabase gen types typescript --linked > src/types/database.types.ts`.
 
 ### 5. Deploy Supabase Edge Functions
 
@@ -236,7 +236,35 @@ npm run build     # TypeScript check + production build
 npm run preview   # Preview production build locally
 npm run lint      # Run ESLint
 npm run type-check # TypeScript type checking only
+npm run test:db   # pgTAP tests against the local Supabase database
 ```
+
+## Database tests
+
+`supabase/tests/` holds [pgTAP](https://pgtap.org) tests, run with `supabase test db` (`npm run test:db`). They check:
+
+- RLS is on for every public table, every policy is scoped to `auth.uid()` (except the read-only `currency_rates` policy), and `user_subscriptions` and `currency_rates` cannot be written by clients.
+- One user cannot read, insert, update or delete another user's rows in any table, or point their own rows at someone else's account; `anon` sees nothing.
+- The balance RPCs (`create_transaction`, `update_transaction`, `delete_transaction`, `create_account_transfer`, `delete_account_transfer`) are `SECURITY INVOKER` with an empty `search_path`, can be called only by signed-in users, and refuse other users' accounts, transactions and transfers.
+- Account balances equal the ledger after creating, editing (amount, type and account) and deleting transactions, after creating and deleting transfers, and after rejected calls.
+- `handle_new_user` is a `SECURITY DEFINER` trigger no client can call.
+
+Each test file runs in a transaction that is rolled back and creates its own users, so the tests need no data and leave none behind. `05_seed.sql` also checks the demo data when `seed.sql` is loaded and is skipped otherwise.
+
+The tests run against whichever local stack `supabase start` brought up, which needs Docker. `supabase db reset` **erases** that local database, so if your local stack holds data you want to keep, run the tests on a separate copy instead:
+
+```bash
+mkdir -p /tmp/ft-test && cp -R supabase /tmp/ft-test/   # any folder outside the repo
+# in /tmp/ft-test/supabase/config.toml: change project_id and every port (e.g. 543xx -> 563xx)
+supabase start --workdir /tmp/ft-test
+supabase db reset --workdir /tmp/ft-test   # migrations + seed
+supabase test db --workdir /tmp/ft-test
+supabase stop --workdir /tmp/ft-test --no-backup
+```
+
+### Demo data
+
+`supabase/seed.sql` loads on `supabase db reset` (local stacks only, never on `db push`). It creates two made-up users, `alex.demo@example.test` and `sam.sample@example.test`, both with the password `demo-password-123`, plus accounts, transactions, transfers, budgets, a recurring payment, bill reminders and notifications. Transactions and transfers go through the same RPCs the app uses, so balances are consistent with the ledger.
 
 ## Deployment
 
