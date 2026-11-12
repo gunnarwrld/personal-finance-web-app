@@ -63,7 +63,7 @@ FROM unnest(ARRAY['anon', 'authenticated']) r,
 
 -- ── Client grants RLS does not cover ───────────────────────────────────────
 -- TRUNCATE bypasses RLS entirely, and anon has no policies, so neither role
--- should hold them (20261112000000_revoke_unused_client_grants.sql).
+-- should hold them (20261112180000_revoke_unused_client_grants.sql).
 
 SELECT is_empty(
   $$ SELECT r, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace,

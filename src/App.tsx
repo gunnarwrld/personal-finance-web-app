@@ -17,6 +17,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ de
 const BudgetsPage = lazy(() => import('@/pages/BudgetsPage').then((m) => ({ default: m.BudgetsPage })));
 const BillsPage = lazy(() => import('@/pages/BillsPage').then((m) => ({ default: m.BillsPage })));
 const RecurringPage = lazy(() => import('@/pages/RecurringPage').then((m) => ({ default: m.RecurringPage })));
+const PrivacyPage = lazy(() => import('@/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })));
 const NotificationCenterPage = lazy(() =>
   import('@/pages/NotificationCenterPage').then((m) => ({ default: m.NotificationCenterPage }))
 );
@@ -42,6 +43,8 @@ function AppRoutes() {
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/auth" element={!isAuthenticated ? <AuthPage /> : <Navigate to="/dashboard" replace />} />
+          {/* Public: readable before signing in */}
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
             <Route element={<Layout />}>
