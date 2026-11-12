@@ -6,7 +6,6 @@ export { useCurrency } from './useCurrency';
 export { useUserPreferences } from './useUserPreferences';
 export { useTheme } from './useTheme';
 export { useToast } from './useToast';
-export { useSubscription } from './useSubscription';
 export { useAnalytics } from './useAnalytics';
 export { useNotifications } from './useNotifications';
 export { useBillReminders } from './useBillReminders';
