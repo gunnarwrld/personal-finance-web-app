@@ -1,180 +1,44 @@
-# Project Status - Personal Finance Web App
+# Project Status
 
-> **Historical snapshot from October 2025.** Some items below, including the Stripe integration and "Production Ready", describe plans that were not deployed. For the current state, see the Status note at the top of [README.md](README.md).
+**Updated**: November 11, 2026
+**Status**: Live on Vercel, free to use, no paid tier
 
-**Date**: October 29, 2025  
-**Status**: ✅ Production Ready - Private Project
+## What the App Does
 
-## ��� Completed Features
+- Accounts, transactions (create, edit, delete), and transfers between accounts
+- Budgets, bill reminders, and recurring transaction schedules
+- Analytics charts with a CSV download of the analytics view
+- Multi-currency display with ECB exchange rates (8 currencies)
+- On-demand AI insights through the `groq-proxy` Edge Function
+- Email/password, magic link, and Google sign-in
+- Installable PWA with offline support
 
-### Core Application
-- ✅ React 18 + TypeScript architecture
-- ✅ Multi-account management with currency support
-- ✅ Transaction tracking (income/expenses)
-- ✅ Real-time currency conversion
-- ✅ Email/password, magic link and Google authentication
-- ✅ Progressive Web App (installable)
-- ✅ Responsive design with Tailwind CSS
+Every feature is available to every account. The Stripe checkout, customer portal, pricing and upgrade UI, and premium gating were removed in November 2026.
 
-### Premium Features
-- ✅ **Advanced Analytics** (Phase 6)
-  - Interactive charts with Recharts
-  - Spending trends visualization
-  - Category breakdown analysis
-  - Income vs expense comparisons
+## Backend
 
-- ✅ **Notifications System** (Phase 7)
-  - Database schema for notifications
-  - Push notification support
-  - Notification center UI
-  - Budget alerts
+- **Supabase**: Postgres with Row Level Security on every table, Postgres functions for writes that change account balances, and two Edge Functions (`groq-proxy`, `refresh-currency-rates`)
+- **Leftover table**: `user_subscriptions` is still in the schema from the old paid tier. The app no longer uses it; it stays until a migration drops it, and the migrations that created it are kept as applied history.
 
-- ✅ **Stripe Integration** (Phase 8)
-  - Subscription checkout flow
-  - Customer portal
-  - Webhook handling via Edge Functions
-  - Premium tier management
+## AI
 
-- ✅ **AI-Powered Insights** (Phase 9)
-  - Groq API integration
-  - 5 AI insight types:
-    1. Spending pattern analysis
-    2. Budget recommendations
-    3. Savings opportunities
-    4. Financial advice
-    5. Expense predictions
-  - Premium feature gating
-  - Multi-currency AI analysis
+- **Models**: `llama-3.3-70b-versatile` (default), `llama-3.1-8b-instant`
+- **Limits in `groq-proxy`**: 5 requests per minute per user and 25 per minute across all users, counted in memory per function instance (best-effort)
+- **Data sent to Groq**: only what each insight needs (transaction dates, descriptions, categories, types and amounts, summary totals, and any goal the user types); no IDs or account names
 
-### Security & Best Practices
-- ✅ Enhanced .gitignore protecting all secrets
-- ✅ .env never committed to version control
-- ✅ .env.example cleaned of real API keys
-- ✅ Row Level Security on all database tables
-- ✅ SECURITY_CHECKLIST.md created
-- ✅ API key validation
-- ✅ Secure Stripe webhook handling
+## Not Done Yet
 
-##  Current Configuration
+- [ ] Transaction-level CSV export
+- [ ] In-app privacy notice and a way to turn AI off
+- [x] Automated tests (RLS isolation, balance integrity): `npm run test:db`
+- [x] A demo seed with fake data (`supabase/seed.sql`)
+- [ ] Automatic creation of recurring transactions
+- [ ] A migration that drops `user_subscriptions`
 
-### Environment Variables (in .env)
-```
-VITE_SUPABASE_URL=<your-supabase-project-url>
-VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key> (secured ✅)
-VITE_STRIPE_PUBLIC_KEY=<your-stripe-public-key> (secured ✅)
-GROQ_API_KEY=<your-groq-api-key> (Supabase secret, not bundled ✅)
-```
+## Release Order
 
-### Premium Account Status
-- **Email**: <your-email>
-- **Tier**: Premium (lifetime)
-- **Status**: Active
-- **Expires**: 2099-12-31
-
-### AI Configuration
-- **Models**: llama-3.3-70b-versatile (default), llama-3.1-8b-instant
-- **Rate Limits**: 30 req/min, 14,400 req/day
-- **Features**: All 5 insight types enabled
-
-## ��� Security Status
-
-### Protected Files
-- ✅ .env (contains real API keys - never committed)
-- ✅ .env.example (only placeholders)
-- ✅ All *.key, *.pem, *.p12 files
-- ✅ secrets/ directory
-- ✅ Sensitive SQL scripts
-
-### Verification
-```bash
-# Confirm .env is not tracked
-git ls-files | grep env
-# Returns: .env.example only ✅
-
-# Check for no staged secrets
-git status
-# .env should NOT appear ✅
-
-# Search for leaked keys
-git grep -i "sk_live\|sk_test\|gsk_"
-# Should return nothing in tracked files ✅
-```
-
-## ��� Deployment Status
-
-- **Platform**: Vercel
-- **Build**: Successful (1,043 KB bundle)
-- **Branch**: main (8 commits ahead of origin)
-- **OAuth**: Google authentication working ✅
-- **Webhooks**: Stripe webhooks configured ✅
-
-## ��� Project Cleanup
-
-### Removed Files
-- ❌ PREMIUM_FEATURES_IMPLEMENTATION.md (outdated documentation)
-- ❌ public/ directory (empty)
-- ❌ SET_PREMIUM_ACCOUNT.sql (temporary, user-deleted after use)
-
-### Active Documentation
-- ✅ README.md (updated for private project)
-- ✅ SECURITY_CHECKLIST.md (security best practices)
-- ✅ docs/STRIPE_SETUP.md (Stripe integration guide)
-- ✅ PROJECT_STATUS.md (this file)
-
-## ��� Testing Checklist
-
-Before deploying:
-- [ ] Run `npm run build` - should complete without errors ✅
-- [ ] Test Google OAuth login
-- [ ] Verify premium features work (Analytics, AI, Notifications)
-- [ ] Test Stripe checkout flow
-- [ ] Confirm currency conversion working
-- [ ] Check PWA installation
-- [ ] Verify all environment variables set in Vercel
-
-## �� Build Stats
-
-```
-Latest build (npm run build):
-- Bundle size: 1,043.55 KB
-- TypeScript errors: 0
-- Build time: ~30 seconds
-- Status: ✅ Success
-```
-
-## ��� Git Status
-
-```
-Current branch: main
-Ahead of origin/main by: 8 commits
-Unpushed commits:
-- feat: Phase 9.1 - Groq AI setup and foundation
-- feat: Phase 9.2-9.3 - Complete AI Features with UI Integration
-- security: Enhanced .gitignore and removed sensitive data
-- docs: Update README for private project and add security checklist
-```
-
-## ��� Next Steps (Optional Future Enhancements)
-
-- [ ] Budget tracking with threshold alerts
-- [ ] Recurring transaction support
-- [ ] Data export (CSV, PDF)
-- [ ] Advanced filtering
-- [ ] Bank API integration
-- [ ] Mobile app (React Native)
-- [ ] Investment tracking
-
-## ⚠️ Important Reminders
-
-1. **Never commit .env file** - contains real API keys
-2. **Always check git status** before pushing
-3. **Verify no secrets** with `git grep` before push
-4. **Keep SECURITY_CHECKLIST.md** updated
-5. **Groq API key is private** - don't expose in frontend logs
-6. **Stripe secret keys** only in Edge Functions, never in frontend
+Schema changes ship before the frontend that depends on them: apply migrations (`supabase db push`), deploy Edge Functions, then merge to `main` (Vercel deploys `main` automatically).
 
 ---
 
-**Project Type**: Private - All Rights Reserved  
-**Last Updated**: October 29, 2025  
 **Version**: 2.0.0

@@ -5,27 +5,18 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useSubscription } from './useSubscription';
 import * as groqService from '@/lib/groq';
 import type { AITransaction } from '@/lib/groq';
 import type { AIInsight, FinancialSnapshot } from '@/types/ai';
 
 export function useAI(currency: string = 'USD') {
-  const { isPremium } = useSubscription();
   const [insights, setInsights] = useState<AIInsight[]>([]);
-
-  // Check if AI features are available
-  const isAIAvailable = isPremium;
 
   /**
    * Analyze spending patterns
    */
   const analyzeSpendingMutation = useMutation({
     mutationFn: async (transactions: AITransaction[]) => {
-      if (!isAIAvailable) {
-        throw new Error('AI features require a Premium subscription');
-      }
-
       const content = await groqService.analyzeSpendingPatterns(
         transactions,
         currency
@@ -57,10 +48,6 @@ export function useAI(currency: string = 'USD') {
       monthlyIncome: number;
       expenses: Record<string, number>;
     }) => {
-      if (!isAIAvailable) {
-        throw new Error('AI features require a Premium subscription');
-      }
-
       const content = await groqService.generateBudgetRecommendations(
         monthlyIncome,
         expenses,
@@ -87,10 +74,6 @@ export function useAI(currency: string = 'USD') {
    */
   const predictExpensesMutation = useMutation({
     mutationFn: async (historicalData: AITransaction[]) => {
-      if (!isAIAvailable) {
-        throw new Error('AI features require a Premium subscription');
-      }
-
       const content = await groqService.predictUpcomingExpenses(
         historicalData,
         currency
@@ -122,10 +105,6 @@ export function useAI(currency: string = 'USD') {
       financialSnapshot: FinancialSnapshot;
       userGoal?: string;
     }) => {
-      if (!isAIAvailable) {
-        throw new Error('AI features require a Premium subscription');
-      }
-
       const content = await groqService.getFinancialAdvice(
         financialSnapshot,
         currency,
@@ -152,10 +131,6 @@ export function useAI(currency: string = 'USD') {
    */
   const findSavingsMutation = useMutation({
     mutationFn: async (transactions: AITransaction[]) => {
-      if (!isAIAvailable) {
-        throw new Error('AI features require a Premium subscription');
-      }
-
       const content = await groqService.findSavingsOpportunities(
         transactions,
         currency
@@ -191,10 +166,6 @@ export function useAI(currency: string = 'USD') {
       };
       currentSavings: number;
     }) => {
-      if (!isAIAvailable) {
-        throw new Error('AI features require a Premium subscription');
-      }
-
       const content = await groqService.createGoalPlan(
         goal,
         currentSavings,
@@ -242,8 +213,6 @@ export function useAI(currency: string = 'USD') {
   return {
     // State
     insights,
-    isAIAvailable,
-    isPremium,
 
     // Mutations
     analyzeSpending: analyzeSpendingMutation.mutate,
