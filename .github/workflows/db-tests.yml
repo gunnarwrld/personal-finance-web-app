@@ -1,0 +1,48 @@
+# Runs the pgTAP tests in supabase/tests against a throwaway local Supabase
+# stack: migrations + seed.sql, then `supabase test db`. Nothing here talks to
+# the hosted project.
+name: Database tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/db-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/db-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pgtap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.90.0
+
+      # Only Postgres, GoTrue, PostgREST and Kong are needed. A fresh start
+      # applies supabase/migrations and loads supabase/seed.sql.
+      - name: Start local Supabase
+        run: >
+          supabase start
+          -x vector,logflare,imgproxy,studio,mailpit,storage-api,realtime,edge-runtime,postgres-meta,supavisor
+
+      - name: Run pgTAP tests
+        run: supabase test db
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup

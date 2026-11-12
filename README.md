@@ -208,6 +208,8 @@ npm run test:db   # pgTAP tests against the local Supabase database
 - Account balances equal the ledger after creating, editing (amount, type and account) and deleting transactions, after creating and deleting transfers, and after rejected calls.
 - `handle_new_user` is a `SECURITY DEFINER` trigger no client can call.
 
+GitHub Actions (`.github/workflows/db-tests.yml`) runs them on a throwaway stack for every pull request that touches `supabase/`, and on pushes to `main`.
+
 Each test file runs in a transaction that is rolled back and creates its own users, so the tests need no data and leave none behind. `05_seed.sql` also checks the demo data when `seed.sql` is loaded and is skipped otherwise.
 
 The tests run against whichever local stack `supabase start` brought up, which needs Docker. `supabase db reset` **erases** that local database, so if your local stack holds data you want to keep, run the tests on a separate copy instead:
