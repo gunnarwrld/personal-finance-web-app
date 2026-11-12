@@ -6,6 +6,7 @@ import { AIInsightsModal } from '@/components/ai';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { toLocalDateString } from '@/lib/utils';
+import { downloadCsv, toCsv, type CsvCell } from '@/lib/csv';
 import type { AnalyticsPeriod } from '@/types';
 
 export const AnalyticsPage: React.FC = () => {
@@ -37,51 +38,47 @@ export const AnalyticsPage: React.FC = () => {
   const handleExport = () => {
     if (!summary && !spendingTrends && !categoryBreakdown) return;
 
-    const rows: string[] = [];
-    
+    // Round for display but keep numbers numeric, so spreadsheets can sum them.
+    const round = (value: number, decimals = 2) => Number(value.toFixed(decimals));
+    const rows: CsvCell[][] = [];
+
     // Summary section
     if (summary) {
-      rows.push('Analytics Summary');
-      rows.push(`Period,${period}`);
-      rows.push(`Currency,${displayCurrency}`);
-      rows.push(`Total Income,${summary.totalIncome.toFixed(2)}`);
-      rows.push(`Total Expenses,${summary.totalExpenses.toFixed(2)}`);
-      rows.push(`Net Savings,${summary.netSavings.toFixed(2)}`);
-      rows.push(`Savings Rate,${summary.savingsRate.toFixed(1)}%`);
-      rows.push(`Top Category,${summary.topSpendingCategory.category},${summary.topSpendingCategory.amount.toFixed(2)}`);
-      rows.push('');
+      rows.push(['Analytics Summary']);
+      rows.push(['Period', period]);
+      rows.push(['Currency', displayCurrency]);
+      rows.push(['Total Income', round(summary.totalIncome)]);
+      rows.push(['Total Expenses', round(summary.totalExpenses)]);
+      rows.push(['Net Savings', round(summary.netSavings)]);
+      rows.push(['Savings Rate (%)', round(summary.savingsRate, 1)]);
+      rows.push([
+        'Top Category',
+        summary.topSpendingCategory.category,
+        round(summary.topSpendingCategory.amount),
+      ]);
+      rows.push([]);
     }
 
     // Spending trends section
     if (spendingTrends && spendingTrends.data.length > 0) {
-      rows.push('Spending Trends');
-      rows.push('Date,Value,Label,Category');
+      rows.push(['Spending Trends']);
+      rows.push(['Date', 'Value', 'Label', 'Category']);
       spendingTrends.data.forEach((item) => {
-        rows.push(`${item.date},${item.value},${item.label || ''},${item.category || ''}`);
+        rows.push([item.date, round(item.value), item.label, item.category]);
       });
-      rows.push('');
+      rows.push([]);
     }
 
     // Category breakdown section
     if (categoryBreakdown && categoryBreakdown.length > 0) {
-      rows.push('Category Breakdown');
-      rows.push('Category,Amount,Percentage');
+      rows.push(['Category Breakdown']);
+      rows.push(['Category', 'Amount', 'Percentage (%)']);
       categoryBreakdown.forEach((item: { category: string; amount: number; percentage: number }) => {
-        rows.push(`${item.category},${item.amount.toFixed(2)},${item.percentage.toFixed(1)}%`);
+        rows.push([item.category, round(item.amount), round(item.percentage, 1)]);
       });
     }
 
-    // Create and download CSV
-    const csvContent = rows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `analytics_${period}_${toLocalDateString()}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadCsv(`analytics_${period}_${toLocalDateString()}.csv`, toCsv(rows));
   };
 
   return (

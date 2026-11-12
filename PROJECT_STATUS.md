@@ -6,6 +6,7 @@
 ## What the App Does
 
 - Accounts, transactions (create, edit, delete), and transfers between accounts
+- Transaction CSV export from the Transactions page (follows the current search, fetched in pages of 1000 so large histories are complete, built client-side)
 - Budgets, bill reminders, and recurring transaction schedules
 - Analytics charts with a CSV download of the analytics view
 - Multi-currency display with ECB exchange rates (8 currencies)
@@ -30,7 +31,6 @@ Every feature is available to every account. The Stripe checkout, customer porta
 
 ## Not Done Yet
 
-- [ ] Transaction-level CSV export
 - [x] Automated tests (RLS isolation, balance integrity): `npm run test:db`
 - [x] A demo seed with fake data (`supabase/seed.sql`)
 - [ ] Automatic creation of recurring transactions
