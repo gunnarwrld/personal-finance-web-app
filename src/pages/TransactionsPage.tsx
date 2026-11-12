@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
 import { Button, Card, Input } from '@/components/ui';
 import { TransactionItem } from '@/components/transactions/TransactionItem';
 import { TransactionModal } from '@/components/transactions/TransactionModal';
-import { useTransactions } from '@/hooks/useTransactions';
+import { fetchTransactionsForExport, useTransactions } from '@/hooks/useTransactions';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
+import { downloadCsv, toCsv, type CsvCell } from '@/lib/csv';
+import { getErrorMessage, toLocalDateString } from '@/lib/utils';
 import type { Transaction } from '@/types';
 
 const PAGE_SIZE = 20;
@@ -13,6 +17,9 @@ export const TransactionsPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const { user } = useAuth();
+  const { success, error: showError } = useToast();
 
   // Wait for a pause in typing before querying, and start again from page 1.
   useEffect(() => {
@@ -35,16 +42,56 @@ export const TransactionsPage: React.FC = () => {
     }
   }, [isLoading, page, totalPages]);
 
+  // Exports every transaction matching the current search (not just this
+  // page). The file is built in the browser and goes only to the download.
+  const handleExport = async () => {
+    if (!user) return;
+    setIsExporting(true);
+    try {
+      const rows = await fetchTransactionsForExport(user.id, search ? { search } : undefined);
+      const csv = toCsv([
+        ['Date', 'Description', 'Category', 'Type', 'Amount', 'Currency', 'Account'],
+        ...rows.map((t): CsvCell[] => [
+          t.date,
+          t.description,
+          t.category,
+          t.type,
+          t.amount,
+          t.currency,
+          t.account_name,
+        ]),
+      ]);
+      downloadCsv(`transactions_${toLocalDateString()}.csv`, csv);
+      success(`Exported ${rows.length} transaction${rows.length === 1 ? '' : 's'}`);
+    } catch (err) {
+      showError(`Export failed: ${getErrorMessage(err)}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Transactions
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Every income and expense. Select one to edit or delete it.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Transactions
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Every income and expense. Select one to edit or delete it.
+          </p>
+        </div>
+        <Button
+          onClick={handleExport}
+          variant="outline"
+          isLoading={isExporting}
+          disabled={isLoading || count === 0}
+          leftIcon={<Download className="h-4 w-4" />}
+          title={search ? `Export transactions matching "${search}" as CSV` : 'Export all transactions as CSV'}
+        >
+          Export
+        </Button>
       </div>
 
       <Card className="p-6 space-y-4">

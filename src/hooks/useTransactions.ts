@@ -12,6 +12,101 @@ import { toLocalDateString } from '@/lib/utils';
 
 const TRANSACTIONS_QUERY_KEY = ['transactions'];
 
+/** The filter methods of a PostgREST query that `applyTransactionFilters` uses. */
+interface FilterableQuery {
+  eq(column: string, value: string | number): this;
+  gte(column: string, value: string): this;
+  lte(column: string, value: string): this;
+  ilike(column: string, pattern: string): this;
+}
+
+/** Applies the Transactions filters; shared by the list and the CSV export. */
+function applyTransactionFilters<Q extends FilterableQuery>(
+  query: Q,
+  filters?: TransactionFilters
+): Q {
+  if (filters?.type) query = query.eq('type', filters.type);
+  if (filters?.category) query = query.eq('category', filters.category);
+  if (filters?.account_id) query = query.eq('account_id', filters.account_id);
+  if (filters?.date_from) query = query.gte('date', filters.date_from);
+  if (filters?.date_to) query = query.lte('date', filters.date_to);
+  if (filters?.search) query = query.ilike('description', `%${filters.search}%`);
+  return query;
+}
+
+/** One row of the transactions CSV export. */
+export interface ExportTransaction {
+  date: string;
+  description: string;
+  category: string;
+  type: string;
+  amount: number;
+  currency: string | null;
+  account_name: string | null;
+}
+
+// PostgREST caps each response (1000 rows by default, and a project can set a
+// lower `max-rows`), so the export asks for this many at a time and keeps going
+// until it has as many rows as the exact count says exist.
+const EXPORT_PAGE_SIZE = 1000;
+
+function exportPageQuery(
+  userId: string,
+  filters: TransactionFilters | undefined,
+  from: number,
+  withCount: boolean
+) {
+  return applyTransactionFilters(
+    supabase
+      .from('transactions')
+      .select('date, description, category, type, amount, currency, account:accounts(name)', {
+        count: withCount ? 'exact' : undefined,
+      })
+      .eq('user_id', userId),
+    filters
+  )
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
+    // A unique tiebreaker, so rows can't swap places between pages.
+    .order('id', { ascending: false })
+    .range(from, from + EXPORT_PAGE_SIZE - 1);
+}
+
+/**
+ * Fetches every transaction of `userId` that matches `filters`, in the same
+ * order as the Transactions page, page by page so the export is not cut off at
+ * the PostgREST row limit. RLS still applies; the user id filter just keeps the
+ * query on the owner's index.
+ */
+export async function fetchTransactionsForExport(
+  userId: string,
+  filters?: TransactionFilters
+): Promise<ExportTransaction[]> {
+  const rows: ExportTransaction[] = [];
+  let total: number | null = null;
+
+  while (total === null || rows.length < total) {
+    const { data, error, count } = await exportPageQuery(userId, filters, rows.length, total === null);
+    if (error) throw error;
+    if (total === null) total = count ?? 0;
+    if (!data || data.length === 0) break; // Rows were deleted mid-export.
+
+    for (const t of data) {
+      rows.push({
+        date: t.date,
+        description: t.description,
+        category: t.category,
+        type: t.type,
+        amount: Number(t.amount),
+        currency: t.currency,
+        account_name: t.account?.name ?? null,
+      });
+    }
+  }
+
+  return rows;
+}
+
 export function useTransactions(
   filters?: TransactionFilters,
   pagination?: PaginationParams
@@ -38,25 +133,7 @@ export function useTransactions(
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
-      // Apply filters
-      if (filters?.type) {
-        query = query.eq('type', filters.type);
-      }
-      if (filters?.category) {
-        query = query.eq('category', filters.category);
-      }
-      if (filters?.account_id) {
-        query = query.eq('account_id', filters.account_id);
-      }
-      if (filters?.date_from) {
-        query = query.gte('date', filters.date_from);
-      }
-      if (filters?.date_to) {
-        query = query.lte('date', filters.date_to);
-      }
-      if (filters?.search) {
-        query = query.ilike('description', `%${filters.search}%`);
-      }
+      query = applyTransactionFilters(query, filters);
 
       // Apply pagination
       if (pagination) {
