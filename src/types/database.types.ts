@@ -470,6 +470,7 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          ai_enabled: boolean
           balance_visible: boolean | null
           budget_alerts: boolean | null
           created_at: string | null
@@ -478,6 +479,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_enabled?: boolean
           balance_visible?: boolean | null
           budget_alerts?: boolean | null
           created_at?: string | null
@@ -486,6 +488,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_enabled?: boolean
           balance_visible?: boolean | null
           budget_alerts?: boolean | null
           created_at?: string | null
