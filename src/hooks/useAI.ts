@@ -8,15 +8,35 @@ import { useMutation } from '@tanstack/react-query';
 import * as groqService from '@/lib/groq';
 import type { AITransaction } from '@/lib/groq';
 import type { AIInsight, FinancialSnapshot } from '@/types/ai';
+import { useUserPreferences } from './useUserPreferences';
+
+export const AI_DISABLED_MESSAGE = 'AI insights are turned off. You can turn them on in Settings.';
+
+/**
+ * Whether the signed-in user allows AI insights (Settings → Privacy).
+ * False while preferences load, so nothing AI-related flashes on screen
+ * for a user who turned it off. groq-proxy enforces the same flag.
+ */
+export function useAIEnabled() {
+  const { preferences, isLoading } = useUserPreferences();
+  return { aiEnabled: preferences?.ai_enabled === true, isLoading };
+}
 
 export function useAI(currency: string = 'USD') {
   const [insights, setInsights] = useState<AIInsight[]>([]);
+  const { aiEnabled } = useAIEnabled();
+
+  /** Stop before any data leaves the app when the user turned AI off. */
+  const requireAI = () => {
+    if (!aiEnabled) throw new Error(AI_DISABLED_MESSAGE);
+  };
 
   /**
    * Analyze spending patterns
    */
   const analyzeSpendingMutation = useMutation({
     mutationFn: async (transactions: AITransaction[]) => {
+      requireAI();
       const content = await groqService.analyzeSpendingPatterns(
         transactions,
         currency
@@ -48,6 +68,7 @@ export function useAI(currency: string = 'USD') {
       monthlyIncome: number;
       expenses: Record<string, number>;
     }) => {
+      requireAI();
       const content = await groqService.generateBudgetRecommendations(
         monthlyIncome,
         expenses,
@@ -74,6 +95,7 @@ export function useAI(currency: string = 'USD') {
    */
   const predictExpensesMutation = useMutation({
     mutationFn: async (historicalData: AITransaction[]) => {
+      requireAI();
       const content = await groqService.predictUpcomingExpenses(
         historicalData,
         currency
@@ -105,6 +127,7 @@ export function useAI(currency: string = 'USD') {
       financialSnapshot: FinancialSnapshot;
       userGoal?: string;
     }) => {
+      requireAI();
       const content = await groqService.getFinancialAdvice(
         financialSnapshot,
         currency,
@@ -131,6 +154,7 @@ export function useAI(currency: string = 'USD') {
    */
   const findSavingsMutation = useMutation({
     mutationFn: async (transactions: AITransaction[]) => {
+      requireAI();
       const content = await groqService.findSavingsOpportunities(
         transactions,
         currency
@@ -166,6 +190,7 @@ export function useAI(currency: string = 'USD') {
       };
       currentSavings: number;
     }) => {
+      requireAI();
       const content = await groqService.createGoalPlan(
         goal,
         currentSavings,
@@ -192,6 +217,7 @@ export function useAI(currency: string = 'USD') {
    */
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
+      requireAI();
       return await groqService.testConnection();
     },
   });
@@ -213,6 +239,7 @@ export function useAI(currency: string = 'USD') {
   return {
     // State
     insights,
+    aiEnabled,
 
     // Mutations
     analyzeSpending: analyzeSpendingMutation.mutate,

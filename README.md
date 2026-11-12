@@ -13,6 +13,7 @@ FinanceTracker is a free personal finance web application built with React and T
 ## Features
 
 - **Multi-Account Management** — Track bank accounts, wallets, and cards, with no limit on how many
+- **Privacy Notice & Account Deletion** — A public notice at `/privacy` (linked from the sign-in page and Settings) explains what is stored, where, and what goes to Groq. **Settings → Delete Account** permanently removes the account and all its data.
 - **Transaction Tracking** — Record, edit, and delete income and expenses with categories
 - **Account Transfers** — Move funds between accounts
 - **Budget Tracking** — Set and monitor category-based budgets with progress bars and alerts
@@ -20,7 +21,7 @@ FinanceTracker is a free personal finance web application built with React and T
 - **Recurring Transactions** — Schedule repeating income and expenses and see what is coming up (see [Known Limitations](#known-limitations))
 - **Analytics** — Interactive charts (spending trends, category breakdown, income vs expenses) powered by Recharts, with a CSV download of the analytics view
 - **Multi-Currency Support** — 8 currencies with live exchange rates via Frankfurter API
-- **AI-Powered Insights** — Spending patterns, budget recommendations, savings opportunities, expense predictions, and personalized advice from Groq. Nothing is sent until you click an AI action. Each request goes through the `groq-proxy` Edge Function and includes only what that insight needs: the selected transactions' dates, descriptions, categories, types, and amounts, summary totals, and any goal you type. Transaction IDs, account names, and your user ID are not sent to Groq.
+- **AI-Powered Insights** — Spending patterns, budget recommendations, savings opportunities, expense predictions, and personalized advice from Groq. Nothing is sent until you click an AI action. Each request goes through the `groq-proxy` Edge Function and includes only what that insight needs: the selected transactions' dates, descriptions, categories, types, and amounts, summary totals, and any goal you type. Transaction IDs, account names, and your user ID are not sent to Groq. AI is on by default and can be switched off per user in **Settings → Privacy**; when it is off the AI buttons are hidden and `groq-proxy` refuses the user's requests (it reads `user_preferences.ai_enabled`).
 - **Sign-in options** — Email + password, magic link, and Google via Supabase Auth (Apple appears automatically once it is enabled in Supabase)
 - **Dashboard** — At-a-glance financial overview with recent transactions
 - **Progressive Web App** — Installable on mobile and desktop with offline support
@@ -60,6 +61,7 @@ FinanceTracker is a free personal finance web application built with React and T
 The app is a **client-side SPA** — there is no custom backend server. Server-side logic runs as **Supabase Edge Functions** (Deno) and Postgres functions:
 
 - `groq-proxy` — authenticated, rate-limited proxy to Groq; the Groq key never reaches the browser
+- `delete-account` — deletes the caller's auth user with the service role; every user-owned table cascades from `auth.users`, so all their data goes with it
 - `refresh-currency-rates` — fetches ECB rates (Frankfurter) and stores them; clients can only read `currency_rates`
 - `create_transaction` / `update_transaction` / `delete_transaction` / `create_account_transfer` / `delete_account_transfer` — Postgres functions that write a ledger row and adjust account balances in one transaction
 - `handle_new_user` — trigger that creates a user's preference rows at signup
@@ -111,9 +113,10 @@ For a local database, `supabase start` followed by `supabase db reset` applies t
 supabase secrets set GROQ_API_KEY=<your-groq-api-key>
 supabase functions deploy groq-proxy --no-verify-jwt
 supabase functions deploy refresh-currency-rates --no-verify-jwt
+supabase functions deploy delete-account --no-verify-jwt
 ```
 
-Both functions check the caller's session themselves (`--no-verify-jwt` matches `supabase/config.toml`).
+All three functions check the caller's session themselves (`--no-verify-jwt` matches `supabase/config.toml`).
 
 ### 6. Start the dev server
 
