@@ -1,0 +1,108 @@
+-- Shared setup for the pgTAP files in supabase/tests. Each test file runs
+-- inside BEGIN ... ROLLBACK and includes this with `\ir helpers/setup.psql`,
+-- so nothing here (or anything a test creates) outlives the test.
+--
+-- The .psql extension keeps `supabase test db` (pg_prove --ext .sql/.pg)
+-- from running this file as a test of its own.
+
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+
+CREATE SCHEMA tests;
+GRANT USAGE ON SCHEMA tests TO anon, authenticated;
+
+-- Creates a confirmed auth user. The on_auth_user_created trigger adds the
+-- user_preferences and notification_preferences rows, as in production.
+CREATE FUNCTION tests.create_user(p_id uuid, p_email text)
+RETURNS uuid
+LANGUAGE sql
+AS $$
+  INSERT INTO auth.users (instance_id, id, aud, role, email, email_confirmed_at, created_at, updated_at)
+  VALUES ('00000000-0000-0000-0000-000000000000', p_id, 'authenticated', 'authenticated',
+          p_email, now(), now(), now())
+  RETURNING id;
+$$;
+
+-- Switch to the role PostgREST uses for a signed-in user, with that user's
+-- JWT claims, until tests.as_postgres() is called.
+CREATE FUNCTION tests.as_user(p_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', p_id, 'role', 'authenticated')::text, true);
+  SET LOCAL ROLE authenticated;
+END;
+$$;
+
+-- A signed-in role with no user id in the JWT.
+CREATE FUNCTION tests.as_authenticated_without_sub()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', '{"role":"authenticated"}', true);
+  SET LOCAL ROLE authenticated;
+END;
+$$;
+
+CREATE FUNCTION tests.as_anon()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', '{"role":"anon"}', true);
+  SET LOCAL ROLE anon;
+END;
+$$;
+
+CREATE FUNCTION tests.as_postgres()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RESET ROLE;
+  PERFORM set_config('request.jwt.claims', '', true);
+END;
+$$;
+
+-- Runs a statement and returns how many rows it touched. RLS hides rows from
+-- UPDATE/DELETE instead of raising, so "0 rows" is the signal that a write
+-- on someone else's data was refused.
+CREATE FUNCTION tests.rows_affected(p_sql text)
+RETURNS bigint
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  n bigint;
+BEGIN
+  EXECUTE p_sql;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RETURN n;
+END;
+$$;
+
+-- What an account's balance should be if the opening balance was 0:
+-- income - expenses - transfers out + converted transfers in.
+-- Call it as postgres so RLS does not hide any rows.
+CREATE FUNCTION tests.ledger_balance(p_account_id integer)
+RETURNS numeric
+LANGUAGE sql
+AS $$
+  SELECT
+    COALESCE((SELECT sum(CASE WHEN type = 'income' THEN amount ELSE -amount END)
+                FROM public.transactions WHERE account_id = p_account_id), 0)
+  - COALESCE((SELECT sum(amount) FROM public.account_transfers
+               WHERE from_account_id = p_account_id), 0)
+  + COALESCE((SELECT sum(converted_amount) FROM public.account_transfers
+               WHERE to_account_id = p_account_id), 0);
+$$;
+
+CREATE FUNCTION tests.balance(p_account_id integer)
+RETURNS numeric
+LANGUAGE sql
+AS $$
+  SELECT balance FROM public.accounts WHERE id = p_account_id;
+$$;
+
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO anon, authenticated;
