@@ -31,8 +31,8 @@ Every feature is available to every account. The Stripe checkout, customer porta
 
 ## Not Done Yet
 
-- [ ] Automated tests (RLS isolation, balance integrity)
-- [ ] A demo seed with fake data
+- [x] Automated tests (RLS isolation, balance integrity): `npm run test:db`
+- [x] A demo seed with fake data (`supabase/seed.sql`)
 - [ ] Automatic creation of recurring transactions
 - [ ] A migration that drops `user_subscriptions`
 
