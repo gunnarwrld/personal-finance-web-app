@@ -1,16 +1,10 @@
 import React from 'react';
 import { LogOut, RefreshCw } from 'lucide-react';
-// FREE-MODE: Crown, Check, CreditCard icons no longer needed
-// import { Crown, Check, CreditCard } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Select } from '@/components/ui';
-// FREE-MODE: SubscriptionModal hidden
-// import { SubscriptionModal } from '@/components/subscription';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useToast } from '@/hooks/useToast';
-// FREE-MODE: useSubscription no longer needed
-// import { useSubscription } from '@/hooks/useSubscription';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 
 export const SettingsPage: React.FC = () => {
@@ -18,26 +12,6 @@ export const SettingsPage: React.FC = () => {
   const { isRefreshing, refreshRatesAsync } = useCurrency();
   const { preferences, updatePreferencesAsync, isUpdating } = useUserPreferences();
   const { success, error: showError } = useToast();
-  // FREE-MODE: Subscription state removed
-  // const { 
-  //   subscription, 
-  //   isPremium, 
-  //   openCustomerPortal,
-  // } = useSubscription();
-  // const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-
-  // FREE-MODE: Payment success/cancel URL handling disabled
-  // useEffect(() => {
-  //   const urlParams = new URLSearchParams(window.location.search);
-  //   const payment = urlParams.get('payment');
-  //   if (payment === 'success') {
-  //     alert('🎉 Welcome to Premium! Your subscription is now active.');
-  //     window.history.replaceState({}, '', '/settings');
-  //   } else if (payment === 'cancelled') {
-  //     alert('Subscription cancelled. You can try again anytime!');
-  //     window.history.replaceState({}, '', '/settings');
-  //   }
-  // }, []);
 
   const handleCurrencyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     try {
@@ -68,19 +42,6 @@ export const SettingsPage: React.FC = () => {
     value: currency,
     label: currency,
   }));
-
-  // FREE-MODE: Subscription management handler disabled
-  // const handleManageSubscription = () => {
-  //   if (isPremium) { openCustomerPortal(); }
-  //   else { setShowSubscriptionModal(true); }
-  // };
-
-  // FREE-MODE: premiumFeatures list disabled
-  // const premiumFeatures = [
-  //   'Unlimited accounts', 'Budget tracking & alerts', 'Recurring transactions',
-  //   'Bill reminders', 'Account transfers', 'Advanced analytics',
-  //   'Export to CSV/PDF', 'Priority support',
-  // ];
 
   return (
     <div className="space-y-6">
@@ -123,11 +84,6 @@ export const SettingsPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* FREE-MODE: Entire Subscription Management card hidden */}
-      {/* ORIGINAL: Subscription Card with premium plan status, features list,
-          manage/upgrade button, and SubscriptionModal was here.
-          Search git diff to restore. */}
 
       {/* Preferences */}
       <Card>

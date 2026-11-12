@@ -8,7 +8,6 @@ export * from './budget';
 export * from './recurring';
 export * from './bill';
 export * from './transfer';
-export * from './subscription';
 export * from './analytics';
 export * from './notification';
 
