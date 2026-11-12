@@ -104,8 +104,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    // Queries run as the caller (their token, RLS applies), not as an admin.
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false, autoRefreshToken: false }
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: authHeader } },
     });
 
     const token = authHeader.replace(/^Bearer\s+/i, '');
@@ -113,6 +115,24 @@ Deno.serve(async (req) => {
 
     if (authError || !user) {
       return json({ error: 'Unauthorized: please sign in again' }, 401);
+    }
+
+    // ── AI opt-out ──────────────────────────────────────────
+    // Users can switch AI off in Settings. Check it here so a request
+    // crafted outside the app cannot send their data to Groq anyway.
+    // A missing row means the user never changed anything: the default is on.
+    const { data: prefs, error: prefsError } = await supabase
+      .from('user_preferences')
+      .select('ai_enabled')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (prefsError) {
+      console.error('groq-proxy: could not read user_preferences', prefsError.message);
+      return json({ error: 'Could not check your AI setting. Please try again.' }, 503);
+    }
+    if (prefs && prefs.ai_enabled === false) {
+      return json({ error: 'AI insights are turned off in Settings.' }, 403);
     }
 
     // ── Rate-limit check ────────────────────────────────────

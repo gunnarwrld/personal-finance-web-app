@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -31,6 +31,27 @@ export const getCurrentUser = async () => {
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+};
+
+/**
+ * Permanently delete the signed-in user's account and all their data
+ * (the delete-account Edge Function removes the auth user; every table
+ * cascades from it), then clear the local session.
+ */
+export const deleteAccount = async () => {
+  const { error } = await supabase.functions.invoke('delete-account', {
+    body: { confirm: 'DELETE' },
+  });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      throw new Error(body?.error || 'Could not delete the account');
+    }
+    throw error;
+  }
+  // The user no longer exists on the server, so only clear this browser's
+  // session; that fires SIGNED_OUT and the app drops its cached data.
+  await supabase.auth.signOut({ scope: 'local' });
 };
 
 // Helper to sign in with Google
