@@ -3,12 +3,14 @@ import { BalanceCard, QuickActions, RecentTransactions } from '@/components/dash
 import { AIInsightsCard } from '@/components/ai';
 import { useBudgetsWithSpending } from '@/hooks/useBudgets';
 import { useBillReminders } from '@/hooks/useBillReminders';
+import { useAIEnabled } from '@/hooks/useAI';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/lib/currency';
 
 export const DashboardPage: React.FC = () => {
   const { budgets } = useBudgetsWithSpending();
   const { upcomingBills, overdueBills } = useBillReminders();
+  const { aiEnabled } = useAIEnabled();
 
   // Show top 3 budgets by percentage used
   const topBudgets = budgets
@@ -32,8 +34,8 @@ export const DashboardPage: React.FC = () => {
 
       {/* AI insights, budgets and bills */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* AI Insights Card */}
-        <AIInsightsCard />
+        {/* AI Insights Card (hidden when the user turned AI off in Settings) */}
+        {aiEnabled && <AIInsightsCard />}
           
         {/* Budget Overview Widget */}
         {topBudgets.length > 0 && (

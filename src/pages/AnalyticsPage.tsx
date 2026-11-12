@@ -13,6 +13,8 @@ export const AnalyticsPage: React.FC = () => {
   const [period, setPeriod] = useState<AnalyticsPeriod>('monthly');
   const [showAIModal, setShowAIModal] = useState(false);
   const displayCurrency = preferences?.display_currency || 'USD';
+  // Settings → Privacy can switch AI off; then the Ask AI entry point goes away.
+  const aiEnabled = preferences?.ai_enabled === true;
 
   const {
     spendingTrends,
@@ -95,14 +97,16 @@ export const AnalyticsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={() => setShowAIModal(true)}
-            variant="primary"
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-            leftIcon={<Sparkles className="h-4 w-4" />}
-          >
-            Ask AI
-          </Button>
+          {aiEnabled && (
+            <Button
+              onClick={() => setShowAIModal(true)}
+              variant="primary"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              leftIcon={<Sparkles className="h-4 w-4" />}
+            >
+              Ask AI
+            </Button>
+          )}
           <Button
             onClick={handleExport}
             variant="outline"
@@ -248,8 +252,8 @@ export const AnalyticsPage: React.FC = () => {
       )}
 
       {/* AI Insights Modal */}
-      <AIInsightsModal 
-        isOpen={showAIModal} 
+      <AIInsightsModal
+        isOpen={showAIModal && aiEnabled}
         onClose={() => setShowAIModal(false)}
         currency={displayCurrency}
       />
