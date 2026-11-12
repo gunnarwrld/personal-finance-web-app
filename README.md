@@ -13,6 +13,7 @@ FinanceTracker is a free personal finance web application built with React and T
 - **Multi-Account Management** — Track bank accounts, wallets, and cards, with no limit on how many
 - **Privacy Notice & Account Deletion** — A public notice at `/privacy` (linked from the sign-in page and Settings) explains what is stored, where, and what goes to Groq. **Settings → Delete Account** permanently removes the account and all its data.
 - **Transaction Tracking** — Record, edit, and delete income and expenses with categories
+- **CSV Export** — Download your transactions from the Transactions page (date, description, category, type, amount, currency, account), following the current search. The file is built in your browser and is not sent anywhere; text cells that a spreadsheet would treat as formulas are prefixed with `'`
 - **Account Transfers** — Move funds between accounts
 - **Budget Tracking** — Set and monitor category-based budgets with progress bars and alerts
 - **Bill Reminders** — Track upcoming and overdue bills
@@ -185,7 +186,7 @@ personal-finance-web-app/
 - **No automated recurring transaction processing** — Recurring transactions need to be triggered manually (a cron job or scheduled function would be needed for full automation)
 - **Limited to 8 currencies** — USD, EUR, GBP, JPY, CNY, SEK, AUD, CAD
 - **No bank sync** — Manual transaction entry only (no Plaid/Teller integration)
-- **No full data export** — The CSV download covers the analytics view only; there is no transaction-level export yet
+- **CSV export only** — Transactions and the analytics view export as CSV; there is no JSON/backup export and no CSV import
 - **Best-effort AI rate limit** — `groq-proxy` counts requests in memory per function instance, so limits reset on cold starts and are not shared between instances
 
 ## Scripts
