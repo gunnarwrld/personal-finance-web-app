@@ -61,6 +61,43 @@ FROM unnest(ARRAY['anon', 'authenticated']) r,
      unnest(ARRAY['currency_rates', 'user_subscriptions']) t,
      unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) p;
 
+-- ── Client grants RLS does not cover ───────────────────────────────────────
+-- TRUNCATE bypasses RLS entirely, and anon has no policies, so neither role
+-- should hold them (20261112000000_revoke_unused_client_grants.sql).
+
+SELECT is_empty(
+  $$ SELECT r, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace,
+            unnest(ARRAY['anon', 'authenticated']) r
+      WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+        AND has_table_privilege(r, c.oid, 'TRUNCATE') $$,
+  'anon and authenticated cannot TRUNCATE any public table'
+);
+
+SELECT is_empty(
+  $$ SELECT p, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace,
+            unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) p
+      WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+        AND has_table_privilege('anon', c.oid, p) $$,
+  'anon cannot INSERT, UPDATE or DELETE any public table'
+);
+
+SELECT ok(has_table_privilege('authenticated', 'public.' || t, p),
+          format('authenticated keeps %s on %s', p, t))
+FROM unnest(ARRAY['accounts', 'transactions', 'budgets']) t,
+     unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) p;
+
+-- Tables created later by migrations (as postgres) inherit the same rules.
+SELECT is_empty(
+  $$ SELECT a.grantee::regrole, a.privilege_type
+       FROM pg_default_acl d, aclexplode(d.defaclacl) a
+      WHERE d.defaclrole = 'postgres'::regrole
+        AND d.defaclnamespace = 'public'::regnamespace
+        AND d.defaclobjtype = 'r'
+        AND ((a.grantee IN ('anon'::regrole, 'authenticated'::regrole) AND a.privilege_type = 'TRUNCATE')
+          OR (a.grantee = 'anon'::regrole AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE'))) $$,
+  'new public tables do not grant TRUNCATE to clients or writes to anon'
+);
+
 -- ── Balance RPCs ───────────────────────────────────────────────────────────
 
 CREATE TEMP TABLE rpc AS

@@ -212,12 +212,12 @@ SELECT is(tests.rows_affected(format('SELECT 1 FROM public.%I', t)), 0::bigint,
 FROM user_tables;
 SELECT is((SELECT count(*) FROM public.currency_rates), 0::bigint, 'anon sees no currency rates');
 
-SELECT is(tests.rows_affected(format('UPDATE public.%I SET user_id = user_id', t)), 0::bigint,
-          format('anon cannot update %s', t))
-FROM user_tables WHERE t <> 'user_subscriptions';
-SELECT is(tests.rows_affected(format('DELETE FROM public.%I', t)), 0::bigint,
-          format('anon cannot delete from %s', t))
-FROM user_tables WHERE t <> 'user_subscriptions';
+SELECT throws_ok(format('UPDATE public.%I SET user_id = user_id', t), '42501', NULL,
+                 format('anon cannot update %s', t))
+FROM user_tables;
+SELECT throws_ok(format('DELETE FROM public.%I', t), '42501', NULL,
+                 format('anon cannot delete from %s', t))
+FROM user_tables;
 SELECT throws_ok(
   $$INSERT INTO public.accounts (user_id, name, type) VALUES ('a0000000-0000-4000-8000-00000000000a', 'planted', 'Cash')$$,
   '42501', NULL, 'anon cannot insert accounts');
