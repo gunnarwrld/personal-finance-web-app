@@ -209,7 +209,7 @@ npm run test:db   # pgTAP tests against the local Supabase database
 - RLS is on for every public table, every policy is scoped to `auth.uid()` (except the read-only `currency_rates` policy), and `user_subscriptions` and `currency_rates` cannot be written by clients.
 - One user cannot read, insert, update or delete another user's rows in any table, or point their own rows at someone else's account; `anon` sees nothing.
 - The balance RPCs (`create_transaction`, `update_transaction`, `delete_transaction`, `create_account_transfer`, `delete_account_transfer`) are `SECURITY INVOKER` with an empty `search_path`, can be called only by signed-in users, and refuse other users' accounts, transactions and transfers.
-- Account balances equal the ledger after creating, editing (amount, type and account) and deleting transactions, after creating and deleting transfers, and after rejected calls.
+- Account balances equal the ledger after creating, editing (amount, type and account) and deleting transactions, after creating and deleting transfers, and after rejected calls. Amounts with more than two decimals are rounded to the cent once, so the stored amount and the balance change always match; amounts under half a cent and NaN amounts or rates are rejected.
 - `handle_new_user` is a `SECURITY DEFINER` trigger no client can call.
 
 GitHub Actions (`.github/workflows/db-tests.yml`) runs them on a throwaway stack for every pull request that touches `supabase/`, and on pushes to `main`.
