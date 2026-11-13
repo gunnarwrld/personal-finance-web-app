@@ -146,5 +146,69 @@ SELECT throws_ok(
 
 SELECT pg_temp.check_balances('after rejected calls', 100, 0, 0);
 
+-- ── Amounts with more than two decimals ────────────────────────────────────
+-- The ledger stores whole cents, so the RPCs must round an amount once and
+-- apply that rounded value to the balance. Rounding the stored amount and the
+-- new balance separately disagrees on half cents, because Postgres rounds
+-- half away from zero: a 0.005 expense on 100.00 is stored as 0.01, while
+-- 100.00 - 0.005 = 99.995 would round back to 100.00.
+
+INSERT INTO ids SELECT 'half-cent expense', (public.create_transaction(
+  (SELECT id FROM ids WHERE name = 'X'), 'expense', 0.005, 'Other', 'half a cent', current_date)).id;
+SELECT pg_temp.check_balances('expense 0.005 on X at 100.00 is applied as 0.01', 99.99, 0, 0);
+
+INSERT INTO ids SELECT 'fee', (public.create_transaction(
+  (SELECT id FROM ids WHERE name = 'Y'), 'expense', 5, 'Other', 'fee', current_date)).id;
+INSERT INTO ids SELECT 'half-cent income', (public.create_transaction(
+  (SELECT id FROM ids WHERE name = 'Y'), 'income', 0.005, 'Other', 'half a cent', current_date)).id;
+SELECT pg_temp.check_balances('income 0.005 on Y at -5.00 is applied as 0.01', 99.99, -4.99, 0);
+
+SELECT public.update_transaction((SELECT id FROM ids WHERE name = 'half-cent income'),
+  (SELECT id FROM ids WHERE name = 'Y'), 'income', 2.345, 'Other', 'refund', current_date);
+SELECT pg_temp.check_balances('editing that income to 2.345 applies 2.35', 99.99, -2.65, 0);
+
+INSERT INTO ids SELECT 'half-cent transfer', (public.create_account_transfer(
+  (SELECT id FROM ids WHERE name = 'X'), (SELECT id FROM ids WHERE name = 'Y'), 0.005)).id;
+SELECT pg_temp.check_balances('transfer 0.005 X -> Y moves 0.01 on both sides', 99.98, -2.64, 0);
+
+SELECT tests.as_postgres();
+SELECT is(
+  (SELECT array_agg(t.amount ORDER BY i.name)
+     FROM ids i JOIN public.transactions t ON t.id = i.id
+    WHERE i.name IN ('half-cent expense', 'half-cent income')),
+  ARRAY[0.01, 2.35]::numeric[],
+  'transactions store the rounded amounts');
+SELECT is(
+  (SELECT amount FROM public.account_transfers WHERE id = (SELECT id FROM ids WHERE name = 'half-cent transfer')),
+  0.01::numeric,
+  'the transfer stores the rounded amount');
+SELECT tests.as_user('c0000000-0000-4000-8000-00000000000c');
+
+-- Under half a cent rounds to 0, which is not an amount. NaN compares greater
+-- than every number, so it needs its own check; a NaN balance would stay NaN.
+SELECT throws_ok(
+  $$SELECT public.create_transaction((SELECT id FROM ids WHERE name = 'X'), 'income', 0.004, 'Other', 'x', current_date)$$,
+  'P0001', 'Amount must be greater than 0', 'create_transaction rejects an amount that rounds to 0');
+SELECT throws_ok(
+  $$SELECT public.create_transaction((SELECT id FROM ids WHERE name = 'X'), 'income', 'NaN', 'Other', 'x', current_date)$$,
+  'P0001', 'Amount must be greater than 0', 'create_transaction rejects NaN');
+SELECT throws_ok(
+  $$SELECT public.update_transaction((SELECT id FROM ids WHERE name = 'income'), (SELECT id FROM ids WHERE name = 'X'), 'income', 0.004, 'Salary', 'pay', current_date)$$,
+  'P0001', 'Amount must be greater than 0', 'update_transaction rejects an amount that rounds to 0');
+SELECT throws_ok(
+  $$SELECT public.update_transaction((SELECT id FROM ids WHERE name = 'income'), (SELECT id FROM ids WHERE name = 'X'), 'income', 'NaN', 'Salary', 'pay', current_date)$$,
+  'P0001', 'Amount must be greater than 0', 'update_transaction rejects NaN');
+SELECT throws_ok(
+  $$SELECT public.create_account_transfer((SELECT id FROM ids WHERE name = 'X'), (SELECT id FROM ids WHERE name = 'Y'), 0.004)$$,
+  'P0001', 'Amount must be greater than 0', 'create_account_transfer rejects an amount that rounds to 0');
+SELECT throws_ok(
+  $$SELECT public.create_account_transfer((SELECT id FROM ids WHERE name = 'X'), (SELECT id FROM ids WHERE name = 'Y'), 'NaN')$$,
+  'P0001', 'Amount must be greater than 0', 'create_account_transfer rejects a NaN amount');
+SELECT throws_ok(
+  $$SELECT public.create_account_transfer((SELECT id FROM ids WHERE name = 'X'), (SELECT id FROM ids WHERE name = 'Z'), 5, 'NaN')$$,
+  'P0001', 'Exchange rate must be greater than 0', 'create_account_transfer rejects a NaN rate across currencies');
+
+SELECT pg_temp.check_balances('after rejected sub-cent and NaN calls', 99.98, -2.64, 0);
+
 SELECT * FROM finish();
 ROLLBACK;
